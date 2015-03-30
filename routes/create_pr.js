@@ -2,15 +2,42 @@ var express = require('express');
 var router = express.Router();
 var Promise = require('bluebird');
 var exec   = require('child_process').exec;
+var request = Promise.promisify(require('request'));
 
 /* GET users listing. */
 router.get('/:buildId/:screenshotIds/:newBranch/:accessToken', function(req, res, next) {
 
+  var buildId = req.params.buildId;
+  var accessToken = req.params.accessToken;
+  var options = {
+    url: process.env.BACKEND_URL + '/api/builds/' + buildId,
+    method: 'PATCH',
+    qs: {
+      access_token: accessToken
+    },
+    form: {
+      pull_request_status: 'in_progress'
+    }
+  };
 
-  execDocker(req.params.buildId, req.params.screenshotIds, req.params.newBranch, req.params.accessToken)
+  // Set the build status to "in progress".
+  request(options)
+    .then(function(response) {
+      return execDocker(buildId, req.params.screenshotIds, req.params.newBranch, accessToken);
+    })
     .then(function(data) {
-        console.log(data);
+      // Set the build status to "done".
+      options.form.pull_request_status = 'done';
+      return request(options);
+    })
+    .catch(function(err) {
+      console.log(err);
+      // Set the build status to "error".
+      options.form.pull_request_status = 'error';
+      return request(options);
     });
+
+
   res.send('Request accepted');
 });
 
