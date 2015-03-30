@@ -26,6 +26,8 @@ router.get('/:buildId/:screenshotIds/:newBranch/:accessToken', function(req, res
       return execDocker(buildId, req.params.screenshotIds, req.params.newBranch, accessToken);
     })
     .then(function(data) {
+      // @todo: Add validation (i.e. exit code) to the docker bash.
+      console.log('Docker done');
       // Set the build status to "done".
       options.form.pull_request_status = 'done';
       return request(options);
@@ -38,7 +40,7 @@ router.get('/:buildId/:screenshotIds/:newBranch/:accessToken', function(req, res
     });
 
 
-  res.send('Request accepted');
+  res.json({message: 'Request accepted'});
 });
 
 var execDocker = function(buildId, screenshotIds, newBranch, accessToken) {
