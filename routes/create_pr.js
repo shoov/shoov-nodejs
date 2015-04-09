@@ -1,10 +1,10 @@
 var express = require('express');
 var router = express.Router();
 var Promise = require('bluebird');
-var exec   = require('child_process').exec;
 var request = Promise.promisify(require('request'));
+var Docker = require('dockerode');
 
-/* GET users listing. */
+// Invoke a PR.
 router.get('/:buildId/:screenshotIds/:newBranch/:accessToken', function(req, res, next) {
 
   var buildId = req.params.buildId;
@@ -43,23 +43,43 @@ router.get('/:buildId/:screenshotIds/:newBranch/:accessToken', function(req, res
   res.json({message: 'Request accepted'});
 });
 
+/**
+ * Execute Docker.
+ *
+ * @param buildId
+ * @param screenshotIds
+ * @param newBranch
+ * @param accessToken
+ * @returns {bluebird}
+ */
 var execDocker = function(buildId, screenshotIds, newBranch, accessToken) {
-  var cmd = 'docker run -e BACKEND_URL=' + process.env.BACKEND_URL + ' amitaibu/shoov-pr /home/main.sh ' + buildId + ' ' + ' ' + screenshotIds + ' ' + newBranch + ' ' + accessToken;
+  // var cmd = 'docker run -e BACKEND_URL=' + process.env.BACKEND_URL + ' amitaibu/shoov-pr /home/main.sh ' + buildId + ' ' + ' ' + screenshotIds + ' ' + newBranch + ' ' + accessToken;
 
-  console.log(cmd);
+  var docker = new Docker();
+
+  var image = 'amitaibu/shoov-pr';
+  var cmd = [
+    '/home/main.sh',
+    buildId,
+    screenshotIds,
+    newBranch,
+    accessToken
+  ];
+
+  var optsc = {
+    'Env': 'BACKEND_URL=' + process.env.BACKEND_URL
+  };
 
   return new Promise(function(resolve, reject) {
-    exec(cmd, function(err, stdout) {
-      if(err) {
-        reject(err);
+    docker.run(image, cmd, process.stdout, optsc, function (err, data, container) {
+      if (err) {
+        return reject(err);
       }
-      else {
-        resolve(stdout.replace('\n', ''));
-      }
+
+      return resolve(data);
     });
   });
 
-  // docker run -e BACKEND_URL=http://10.0.0.4/shoov/www -it amitaibu/shoov-pr /home/main.sh 7 8 new-branch1 eUfNOkVaqD7-cIOLMpllhJP1MlSxuVRd5zSZTwm8iuY
 };
 
 
