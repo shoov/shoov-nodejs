@@ -89,9 +89,6 @@ var execDocker = function(buildId, accessToken) {
 
         stream.on('data',function(chunk){
           // Get the data from the terminal.
-          // @todo: Promisify this, so we don't have to console.log() just to
-          // make sure nodejs had time to get all the chunks.
-          console.log('chunk debug: ' + chunk);
           logOutput += chunk;
         });
       });
