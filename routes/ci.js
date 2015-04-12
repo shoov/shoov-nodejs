@@ -26,16 +26,17 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       var data = JSON.parse(response).data[0];
       return execDocker(data.build, accessToken);
     })
-    .then(function(data) {
-      // @todo: Add validation (i.e. exit code) to the docker bash.
-      console.log('Docker done');
+    .then(function(log) {
+      console.log('Build Success');
       // Set the build status to "done".
+      options.form.log = log;
       options.form.status = 'done';
       return request(options);
     })
-    .catch(function(err) {
-      console.log(err);
+    .catch(function(log) {
+      console.log('Build Error');
       // Set the build status to "error".
+      options.form.log = log;
       options.form.status = 'error';
       return request(options);
     });
@@ -73,36 +74,34 @@ var execDocker = function(buildId, accessToken) {
         return reject(err);
       }
 
-
-      var logs_opts = {
+      var logsPpts = {
         follow: true,
         stdout: true,
         stderr: true,
         timestamps: true
       };
 
-      container.logs(logs_opts, function(err, stream) {
-        var string = '';
+      var logOutput = '';
+
+      container.logs(logsPpts, function(err, stream) {
 
         stream.on('data',function(chunk){
           // Get the data from the terminal.
-          string += chunk;
-        });
-
-        stream.on('end',function() {
-          // Upload the result to the backend.
-          console.log('final output ' + string);
+          logOutput += chunk;
         });
       });
 
       container.inspect(function(err, data) {
         // Update if build was ok, based on the exit code of the container.
-        console.log(data.State);
+        if (data.State.ExitCode === 0) {
+          return resolve(logOutput);
+        }
+        else {
+          return reject(logOutput);
+        }
 
 
       });
-
-      return resolve(data);
     });
   });
 
