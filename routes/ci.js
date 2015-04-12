@@ -85,22 +85,31 @@ var execDocker = function(buildId, accessToken) {
 
       var logOutput = '';
 
-      container.logs(logsPpts, function(err, stream) {
+      var dataPromise = new Promise(function(resolve, reject) {
+        container.logs(logsPpts, function(err, stream) {
+          stream.on('data',function(chunk) {
+            // Get the data from the terminal.
+            logOutput += chunk;
+          });
 
-        stream.on('data',function(chunk){
-          // Get the data from the terminal.
-          logOutput += chunk;
+          stream.on('end',function() {
+            return resolve(logOutput);
+          });
         });
       });
 
-      container.inspect(function(err, data) {
-        // Update if build was ok, based on the exit code of the container.
-        if (data.State.ExitCode === 0) {
-          return resolve(logOutput);
-        }
-        else {
-          return reject(logOutput);
-        }
+      var exitCodePromise = new Promise(function(resolve, reject) {
+        container.inspect(function(err, data) {
+          return resolve(data.State.ExitCode);
+        });
+      });
+
+      Promise.props({
+        data: dataPromise,
+        exitCode: exitCodePromise
+      }).then(function(result) {
+        console.log(result);
+        return resolve(result);
       });
     });
   });
