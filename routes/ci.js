@@ -29,16 +29,18 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     .then(function(log) {
       console.log('Build Success');
       // Set the build status to "done".
-      options.form.log = log;
+      options.form.log = log.toString();
       options.form.status = 'done';
       return request(options);
     })
     .catch(function(log) {
-      console.log('Build Error');
       // Set the build status to "error".
-      options.form.log = log;
+      options.form.log = log.toString();
       options.form.status = 'error';
       return request(options);
+    })
+    .then(function(response) {
+      console.log(JSON.parse(response));
     });
 
 
@@ -99,8 +101,6 @@ var execDocker = function(buildId, accessToken) {
         else {
           return reject(logOutput);
         }
-
-
       });
     });
   });
