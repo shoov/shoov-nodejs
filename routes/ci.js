@@ -73,6 +73,32 @@ var execDocker = function(buildId, accessToken) {
         return reject(err);
       }
 
+
+      var logs_opts = {
+        follow: true,
+        stdout: true,
+        stderr: true,
+        timestamps: true
+      };
+
+      container.logs(logs_opts, function(err, stream) {
+        var string = '';
+
+        stream.on('data',function(chunk){
+          // Get the data from the terminal.
+          string += chunk;
+        });
+
+        stream.on('end',function() {
+          // Upload the result to the backend.
+          console.log('final output ' + string);
+        });
+      });
+
+      container.inspect(function(err, data) {
+        console.log(data.State);
+      });
+
       return resolve(data);
     });
   });
