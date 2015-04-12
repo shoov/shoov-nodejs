@@ -96,7 +96,10 @@ var execDocker = function(buildId, accessToken) {
       });
 
       container.inspect(function(err, data) {
+        // Update if build was ok, based on the exit code of the container.
         console.log(data.State);
+
+
       });
 
       return resolve(data);
