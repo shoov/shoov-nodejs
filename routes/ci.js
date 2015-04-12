@@ -29,13 +29,13 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     .then(function(log) {
       console.log('Build Success');
       // Set the build status to "done".
-      options.form.log = log.toString();
+      options.form.log = log;
       options.form.status = 'done';
       return request(options);
     })
     .catch(function(log) {
       // Set the build status to "error".
-      options.form.log = log.toString();
+      options.form.log = log;
       options.form.status = 'error';
       return request(options);
     })
