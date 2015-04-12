@@ -26,22 +26,19 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       var data = JSON.parse(response).data[0];
       return execDocker(data.build, accessToken);
     })
-    .then(function(log) {
-      console.log('Build Success');
-      // Set the build status to "done".
-      options.form.log = log;
-      options.form.status = 'done';
-      return request(options);
-    })
-    .catch(function(log) {
-      // Set the build status to "error".
-      options.form.log = log;
-      options.form.status = 'error';
+    .then(function(response) {
+      options.form.log = response.log;
+      // Set the build status to "done" or "error" by the exit code.
+      options.form.status = !response.exitCode ? 'done' : 'error';
       return request(options);
     })
     .then(function(response) {
       console.log(JSON.parse(response));
+    })
+    .catch(function(err) {
+      console.log(err);
     });
+
 
 
   res.json({message: 'Request accepted'});
@@ -85,22 +82,31 @@ var execDocker = function(buildId, accessToken) {
 
       var logOutput = '';
 
-      container.logs(logsPpts, function(err, stream) {
+      var logPromise = new Promise(function(resolve, reject) {
+        container.logs(logsPpts, function(err, stream) {
+          stream.on('data',function(chunk) {
+            // Get the data from the terminal.
+            logOutput += chunk;
+          });
 
-        stream.on('data',function(chunk){
-          // Get the data from the terminal.
-          logOutput += chunk;
+          stream.on('end',function() {
+            return resolve(logOutput);
+          });
         });
       });
 
-      container.inspect(function(err, data) {
-        // Update if build was ok, based on the exit code of the container.
-        if (data.State.ExitCode === 0) {
-          return resolve(logOutput);
-        }
-        else {
-          return reject(logOutput);
-        }
+      var exitCodePromise = new Promise(function(resolve, reject) {
+        container.inspect(function(err, data) {
+          return resolve(data.State.ExitCode);
+        });
+      });
+
+      Promise.props({
+        log: logPromise,
+        exitCode: exitCodePromise
+      })
+      .then(function(result) {
+        return resolve(result);
       });
     });
   });
