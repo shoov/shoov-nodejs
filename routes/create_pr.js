@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var Promise = require('bluebird');
-var request = Promise.promisify(require('request'));
+var request = require('request-promise');
 var Docker = require('dockerode');
 
 // Invoke a PR.
