@@ -3,6 +3,7 @@ var router = express.Router();
 var Promise = require('bluebird');
 var request = require('request-promise');
 var Docker = require('dockerode');
+var ansi2html = require('ansi2html');
 
 // Invoke a PR.
 router.get('/:buildItemId/:accessToken', function(req, res, next) {
@@ -27,7 +28,8 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       return execDocker(data.build, accessToken);
     })
     .then(function(response) {
-      options.form.log = response.log;
+      // Convert ANSI colors to HTML.
+      options.form.log = ansi2html(response.log);
       // Set the build status to "done" or "error" by the exit code.
       options.form.status = !response.exitCode ? 'done' : 'error';
       return request(options);
