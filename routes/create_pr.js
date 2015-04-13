@@ -76,6 +76,8 @@ var execDocker = function(buildId, screenshotIds, newBranch, accessToken) {
         return reject(err);
       }
 
+      // Remove the container.
+      container.remove(function(err, data) {});
       return resolve(data);
     });
   });
