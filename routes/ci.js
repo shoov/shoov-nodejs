@@ -79,7 +79,7 @@ var execDocker = function(buildId, accessToken) {
         follow: true,
         stdout: true,
         stderr: true,
-        timestamps: true
+        timestamps: false
       };
 
       var logOutput = '';
