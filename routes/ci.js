@@ -107,9 +107,12 @@ var execDocker = function(buildId, accessToken) {
         log: logPromise,
         exitCode: exitCodePromise
       })
-      .then(function(result) {
-        return resolve(result);
-      });
+        .then(function(result) {
+          // Remove the container.
+          container.remove(function(err, data) {});
+          return resolve(result);
+        });
+
     });
   });
 
