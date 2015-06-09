@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
-var Promise = require('bluebird');
-var request = require('request-promise');
+var crypto = require('crypto');
+var algorithm = 'aes-256-ctr';
 
 router.post('/', function(req, res, next) {
   var privateKey = req.body.privateKey;
@@ -12,9 +12,6 @@ router.post('/', function(req, res, next) {
 
   res.json({encrypt: encryptResult});
 });
-
-var crypto = require('crypto');
-var algorithm = 'aes-256-ctr';
 
 function encrypt(text, privateKey){
   var cipher = crypto.createCipher(algorithm, privateKey);
