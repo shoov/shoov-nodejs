@@ -18,8 +18,8 @@ var crypto = require('crypto');
 var algorithm = 'aes-256-ctr';
 
 function encrypt(text, privateKey){
-  var cipher = crypto.createCipher(algorithm, privateKey)
-  var crypted = cipher.update(text,'utf8','hex')
+  var cipher = crypto.createCipher(algorithm, privateKey);
+  var crypted = cipher.update(text,'utf8','hex');
   crypted += cipher.final('hex');
   return crypted;
 }
