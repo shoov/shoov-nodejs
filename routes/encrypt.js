@@ -3,11 +3,10 @@ var router = express.Router();
 var Promise = require('bluebird');
 var request = require('request-promise');
 
-router.get('/:privateKey/:keyToConvert/:valueToConvert', function(req, res, next) {
-
-  var privateKey = req.params.privateKey;
-  var keyToConvert = req.params.keyToConvert;
-  var valueToConvert = req.params.valueToConvert;
+router.post('/', function(req, res, next) {
+  var privateKey = req.body.privateKey;
+  var keyToConvert = req.body.keyToConvert;
+  var valueToConvert = req.body.valueToConvert;
 
   var encryptResult = encrypt(keyToConvert + ':' + valueToConvert, privateKey);
 
