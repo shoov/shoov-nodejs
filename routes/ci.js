@@ -5,6 +5,8 @@ var request = require('request-promise');
 var Docker = require('dockerode');
 var ansi2html = require('ansi2html');
 
+var backendUrl = process.env.BACKEND_URL || "http://192.168.1.32/shoov.local/";
+
 // Invoke a PR.
 router.get('/:buildItemId/:accessToken', function(req, res, next) {
 
@@ -47,76 +49,156 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
 });
 
 /**
- * Execute Docker.
+ * Execute Silenium plus CI Build docker.
  *
  * @param buildId
- * @param screenshotIds
- * @param newBranch
+ *  ID of CI Build on the backend.
  * @param accessToken
+ *  Access token of user creator of CI Build.
+ *
  * @returns {bluebird}
  */
 var execDocker = function(buildId, accessToken) {
-  var docker = new Docker();
+  // Init a docker.
+  var docker = new Docker({socketPath: '/var/run/docker.sock'});
 
-  var image = 'amitaibu/php-ci';
-  var cmd = [
-    '/home/shoov/main.sh',
-    buildId,
-    accessToken
-  ];
+  // Variable contain all created containers.
+  var containers = [];
 
-  var optsc = {
-    'Env': 'BACKEND_URL=' + process.env.BACKEND_URL
+  // Function create and run Silenium container.
+  var runSilenium = function() {
+    return new Promise(function(resolve, reject) {
+      docker.createContainer({
+        'Image': 'elgalu/selenium:v2.45.0-oracle1',
+        'Env': [
+          'SCREEN_WIDTH=1920',
+          'SCREEN_HEIGHT=1080',
+          'VNC_PASSWORD=hola',
+          'WITH_GUACAMOLE=false',
+        ]
+      }, function(err, container) {
+        if (err) reject(err);
+        // Save container in containers variable.
+        containers.push(container);
+        // Start a new created container.
+        container.start(function(err) {
+          if (err) reject(err);
+          // TODO: output logs to stdout.
+          // Inspect a new started container.
+          container.inspect(function(err, data) {
+            if (err) reject(err);
+            // Return ID of the new container.
+            resolve(data.Name);
+          });
+        });
+      });
+    });
   };
 
-  return new Promise(function(resolve, reject) {
-    docker.run(image, cmd, process.stdout, optsc, function (err, data, container) {
-      if (err) {
-        return reject(err);
-      }
-
-      var logsPpts = {
-        follow: true,
-        stdout: true,
-        stderr: true,
-        timestamps: false
-      };
-
-      var logOutput = '';
-
-      var logPromise = new Promise(function(resolve, reject) {
-        container.logs(logsPpts, function(err, stream) {
-          stream.on('data',function(chunk) {
-            // Get the data from the terminal.
-            logOutput += chunk;
-          });
-
-          stream.on('end',function() {
-            return resolve(logOutput);
+  // Function create and run CI Build container.
+  var runCIBuild = function(sileniumContainerName) {
+    return new Promise(function(resolve, reject) {
+      docker.createContainer({
+        'Image': 'amitaibu/php-ci',
+        'Env': [
+          'BACKEND_URL=' + backendUrl
+        ],
+        'Cmd': [
+          '/home/shoov/main.sh',
+          buildId,
+          accessToken
+        ],
+        'HostConfig': {
+          "Links": [sileniumContainerName + ':silenium']
+        }
+      }, function(err, container) {
+        if (err) reject(err);
+        // Save container in containers variable.
+        containers.push(container);
+        // Start a new created container.
+        container.start(function(err) {
+          if (err) reject(err);
+          // TODO: output logs to stdout.
+          // Inspect a new started container.
+          container.inspect(function(err, data) {
+            if (err) reject(err);
+            // Return ID of the new container.
+            resolve(data);
           });
         });
       });
-
-      var exitCodePromise = new Promise(function(resolve, reject) {
-        container.inspect(function(err, data) {
-          return resolve(data.State.ExitCode);
-        });
-      });
-
-      Promise.props({
-        log: logPromise,
-        exitCode: exitCodePromise
-      })
-        .then(function(result) {
-          // Remove the container.
-          container.remove(function(err, data) {});
-          return resolve(result);
-        });
-
     });
-  });
+  };
+
+  runSilenium()
+    .then(runCIBuild)
+    .then(console.log);
+
+
+  //var image = 'amitaibu/php-ci';
+  //var cmd = [
+  //  '/home/shoov/main.sh',
+  //  buildId,
+  //  accessToken
+  //];
+  //
+  //var optsc = {
+  //  'Env':
+  //};
+  //
+  //return new Promise(function(resolve, reject) {
+  //  docker.run(image, cmd, process.stdout, optsc, function (err, data, container) {
+  //    if (err) {
+  //      return reject(err);
+  //    }
+  //
+  //    var logsPpts = {
+  //      follow: true,
+  //      stdout: true,
+  //      stderr: true,
+  //      timestamps: false
+  //    };
+  //
+  //    var logOutput = '';
+  //
+  //    var logPromise = new Promise(function(resolve, reject) {
+  //      container.logs(logsPpts, function(err, stream) {
+  //        stream.on('data',function(chunk) {
+  //          // Get the data from the terminal.
+  //          logOutput += chunk;
+  //        });
+  //
+  //        stream.on('end',function() {
+  //          return resolve(logOutput);
+  //        });
+  //      });
+  //    });
+  //
+  //    var exitCodePromise = new Promise(function(resolve, reject) {
+  //      container.inspect(function(err, data) {
+  //        return resolve(data.State.ExitCode);
+  //      });
+  //    });
+  //
+  //    Promise.props({
+  //      log: logPromise,
+  //      exitCode: exitCodePromise
+  //    })
+  //      .then(function(result) {
+  //        // Remove the container.
+  //        container.remove(function(err, data) {});
+  //        return resolve(result);
+  //      });
+  //
+  //  });
+  //});
 
 };
+
+
+
+
+
 
 
 module.exports = router;
