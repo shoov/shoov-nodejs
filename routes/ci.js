@@ -5,8 +5,7 @@ var request = require('request-promise');
 var Docker = require('dockerode');
 var ansi2html = require('ansi2html');
 
-var backendUrl = process.env.BACKEND_URL || "http://192.168.1.32/shoov.local/";
-var debug = true;
+var debug = process.env.DEBUG || false;
 
 // Invoke a PR.
 router.get('/:buildItemId/:accessToken', function(req, res, next) {
@@ -44,42 +43,52 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       console.log(err);
     });
 
-
   res.json({message: 'Request accepted'});
 });
 
 /**
- * Execute Silenium plus CI Build docker.
+ * Execute all dockers containers.
  *
  * @param buildId
  *  ID of CI Build on the backend.
  * @param accessToken
  *  Access token of user creator of CI Build.
  *
- * @returns {bluebird}
+ * @returns {Promise}
  */
 var execDocker = function(buildId, accessToken) {
-  // Init a docker.
-  var docker = new Docker({socketPath: '/var/run/docker.sock'});
-
-  // Variable contain all created containers.
+  // Init a docker object.
+  var docker = new Docker();
+  // All running containers.
   var containers = [];
+  // Generate unique name for containers.
+  var CIBuildContainerName = 'ci-build-' + buildId;
+  var sileniumContainerName = 'silenium-' + buildId;
+  // Determine a VNC password.
+  var vncPassword = process.env.VNC_PASSOWRD || 'hola';
+  var timeoutLimit = process.env.TIMEOUT_LIMIT || 30;
+  // Indicate of containers were already processed for remove.
+  var removedContainers = false;
 
-  // Function create and run Silenium container.
+  /**
+   * Function creates and starts Silenium container.
+   *
+   * @returns {Promise}
+   */
   var runSilenium = function() {
     return new Promise(function(resolve, reject) {
-      var containerName = undefined;
-      var buffer = '';
-      var ready = false;
+      // Determine if the container is ready, and can accept connections.
+      var containerReady = false;
 
       docker.createContainer({
-        'Image': 'elgalu/selenium:v2.45.0-oracle1',
+        'Image': 'elgalu/selenium:v2.46.0-base1',
         'Env': [
           'SCREEN_WIDTH=1920',
           'SCREEN_HEIGHT=1080',
-          'VNC_PASSWORD=hola',
-          'WITH_GUACAMOLE=false',
-        ]
+          'VNC_PASSWORD=' + vncPassword,
+          'WITH_GUACAMOLE=false'
+        ],
+        'name': sileniumContainerName
       }, function(err, container) {
         if (err) reject(err);
         // Save container in containers variable.
@@ -87,30 +96,27 @@ var execDocker = function(buildId, accessToken) {
         // Attach to container.
         container.attach({stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) reject(err);
+          // Debug container output.
+          if (debug) {
+            stream.pipe(process.stdout);
+          }
           // Start a new created container.
           container.start(function(err) {
             if (err) reject(err);
             // Set timeout.
             setTimeout(function() {
-              if (ready != true) {
-                reject("Silenium server can't start");
+              if (!containerReady) {
+                reject('Silenium server couldn\'t start, and have timed out after ' + timeoutLimit + ' sec');
               }
-            }, 10000);
-          });
-          // Inspect a container.
-          container.inspect(function(err, data) {
-            if (err) reject(err);
-            // Return Name of the new container.
-            containerName = data.Name;
+            }, timeoutLimit * 1000);
           });
           // Read stream and wait until needed phrase.
           stream.on('data', function(chunk) {
-            // Collection output buffer.
-            buffer += chunk.toString();
-            // And waiting for "ready" string.
-            if (buffer.indexOf('all done and ready for testing') > -1) {
-              ready = true;
-              resolve(containerName);
+            // And waiting for "Ready" string.
+            var string = chunk.toString();
+            if (string.indexOf('all done and ready for testing') > -1) {
+              containerReady = true;
+              resolve(true);
             }
           });
         });
@@ -118,15 +124,20 @@ var execDocker = function(buildId, accessToken) {
     });
   };
 
-  // Function create and run CI Build container.
-  var runCIBuild = function(sileniumContainerName) {
-    var result = {};
-
+  /**
+   * Function creates and starts CI Build container.
+   *
+   * @returns {Promise}
+   */
+  var runCIBuild = function() {
     return new Promise(function(resolve, reject) {
+      // Result for save all output logs and exit code.
+      var result = {};
+
       docker.createContainer({
         'Image': 'amitaibu/php-ci',
         'Env': [
-          'BACKEND_URL=' + backendUrl
+          'BACKEND_URL=' + process.env.BACKEND_URL
         ],
         'Cmd': [
           '/home/shoov/main.sh',
@@ -135,7 +146,8 @@ var execDocker = function(buildId, accessToken) {
         ],
         'HostConfig': {
           "Links": [sileniumContainerName + ':silenium']
-        }
+        },
+        'name': CIBuildContainerName
       }, function(err, container) {
         if (err) reject(err);
         // Save container in containers variable.
@@ -143,7 +155,7 @@ var execDocker = function(buildId, accessToken) {
         // Attach to container.
         container.attach({stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) reject(err);
-          // Debug app.
+          // Debug container output.
           if (debug) {
             stream.pipe(process.stdout);
           }
@@ -159,9 +171,8 @@ var execDocker = function(buildId, accessToken) {
           // Waits for a container to end.
           container.wait(function(err, data) {
             if (err) reject(err);
-            // Set exit code.
+            // Get the exit code.
             result.exitCode = data.StatusCode;
-            // Return result.
             resolve(result);
           });
         });
@@ -169,22 +180,26 @@ var execDocker = function(buildId, accessToken) {
     });
   };
 
-  // Function to remove all containers.
+  /**
+   * Function stops and remove all ran containers.
+   *
+   * @returns {Promise}
+   */
   var removeContainers = function() {
+    removedContainers = true;
     return new Promise(function(resolve, reject) {
-      // We are need next variables to solve async issue.
+      // The count of the containers.
       var countContainers = containers.length;
       var removedContainers = 0;
       // Some options for remove command.
       var opts = {
-        'force': true // Kill then remove the container.
+        // Kill then remove the container.
+        'force': true
       };
       // Start deleting every container.
       containers.forEach(function(container, index) {
         container.remove(opts, function(err, data) {
-          // Happening something bad.
           if (err) reject(err);
-          // Plus counter of removed containers.
           removedContainers++;
           // If all containers are removed we can return.
           if (removedContainers >= countContainers) {
@@ -195,7 +210,7 @@ var execDocker = function(buildId, accessToken) {
     });
   };
 
-  // We will save result in this variable.
+  // Helper variable to get the CI container logs.
   var returnOutput = undefined;
 
   // Start a promise chain.
@@ -212,7 +227,10 @@ var execDocker = function(buildId, accessToken) {
     })
     .catch(function(err) {
       // If error happened then remove all containers.
-      removeContainers();
+      if (!removedContainers) {
+        // The error has originated not happened in removeContainers().
+        removeContainers();
+      }
       // And show error.
       console.log(err);
     });
