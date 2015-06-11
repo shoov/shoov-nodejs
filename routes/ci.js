@@ -45,7 +45,6 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     });
 
 
-
   res.json({message: 'Request accepted'});
 });
 
@@ -69,6 +68,10 @@ var execDocker = function(buildId, accessToken) {
   // Function create and run Silenium container.
   var runSilenium = function() {
     return new Promise(function(resolve, reject) {
+      var containerName = undefined;
+      var buffer = '';
+      var ready = false;
+
       docker.createContainer({
         'Image': 'elgalu/selenium:v2.45.0-oracle1',
         'Env': [
@@ -81,15 +84,34 @@ var execDocker = function(buildId, accessToken) {
         if (err) reject(err);
         // Save container in containers variable.
         containers.push(container);
-        // Start a new created container.
-        container.start(function(err) {
+        // Attach to container.
+        container.attach({stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) reject(err);
-          // TODO: output logs to stdout.
-          // Inspect a new started container.
+          // Start a new created container.
+          container.start(function(err) {
+            if (err) reject(err);
+            // Set timeout.
+            setTimeout(function() {
+              if (ready != true) {
+                reject("Silenium server can't start");
+              }
+            }, 10000);
+          });
+          // Inspect a container.
           container.inspect(function(err, data) {
             if (err) reject(err);
-            // Return ID of the new container.
-            resolve(data.Name);
+            // Return Name of the new container.
+            containerName = data.Name;
+          });
+          // Read stream and wait until needed phrase.
+          stream.on('data', function(chunk) {
+            // Collection output buffer.
+            buffer += chunk.toString();
+            // And waiting for "ready" string.
+            if (buffer.indexOf('all done and ready for testing') > -1) {
+              ready = true;
+              resolve(containerName);
+            }
           });
         });
       });
@@ -122,7 +144,9 @@ var execDocker = function(buildId, accessToken) {
         container.attach({stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) reject(err);
           // Debug app.
-          if (debug) stream.pipe(process.stdout);
+          if (debug) {
+            stream.pipe(process.stdout);
+          }
           // Read a stream.
           stream.on('data', function(chunk) {
             // Get the data from the terminal.
@@ -164,17 +188,34 @@ var execDocker = function(buildId, accessToken) {
           removedContainers++;
           // If all containers are removed we can return.
           if (removedContainers >= countContainers) {
-            resolve('All containers are removed.');
+            resolve('Containers are stopped.')
           }
         })
       });
     });
   };
 
+  // We will save result in this variable.
+  var returnOutput = undefined;
+
+  // Start a promise chain.
   return runSilenium()
     .then(runCIBuild)
+    .then(function(result) {
+      // Save log output in global variable.
+      returnOutput = result;
+    })
     .then(removeContainers)
-    .then(console.log);
+    .then(function() {
+      // After containers are removed we can return result.
+      return returnOutput;
+    })
+    .catch(function(err) {
+      // If error happened then remove all containers.
+      removeContainers();
+      // And show error.
+      console.log(err);
+    });
 
 };
 
