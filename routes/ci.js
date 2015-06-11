@@ -145,8 +145,36 @@ var execDocker = function(buildId, accessToken) {
     });
   };
 
+  // Function to remove all containers.
+  var removeContainers = function() {
+    return new Promise(function(resolve, reject) {
+      // We are need next variables to solve async issue.
+      var countContainers = containers.length;
+      var removedContainers = 0;
+      // Some options for remove command.
+      var opts = {
+        'force': true // Kill then remove the container.
+      };
+      // Start deleting every container.
+      containers.forEach(function(container, index) {
+        container.remove(opts, function(err, data) {
+          // Happening something bad.
+          if (err) reject(err);
+          // Plus counter of removed containers.
+          removedContainers++;
+          // If all containers are removed we can return.
+          if (removedContainers >= countContainers) {
+            resolve('All containers are removed.');
+          }
+        })
+      });
+    });
+  };
+
   return runSilenium()
-    .then(runCIBuild);
+    .then(runCIBuild)
+    .then(removeContainers)
+    .then(console.log);
 
 };
 
