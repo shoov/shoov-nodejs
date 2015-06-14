@@ -10,11 +10,11 @@ Install all node dependencies:
 
 ## Execute
 
-    $ BACKEND_URL=https://backend.com pm2 start bin/www --name=node-server
+    $ BACKEND_URL=http://192.168.1.32/shoov.local DEBUG=true pm2 start bin/www --name=node-server
 
 Possible environments:
 
-* __BACKEND_URL__ - url address of backend server. 
+* __BACKEND_URL__ - url address of backend server. It's can't be alias for your ip (for example shoov.local) because docker doesn't know about your hosts. 
 * __DEBUG__ - enable debug mode, output all docker logs to stdout. _(optional)_
 * __VNC_PASSOWRD__ - password for connect to VNC. _(optional)_
 * __TIMEOUT_LIMIT__ - timeout in seconds to start silenium container _(optional)_, default 30 seconds.
