@@ -10,13 +10,16 @@ Install all node dependencies:
 
 ## Execute
 
-    $ BACKEND_URL=http://192.168.1.32/shoov.local DEBUG=true pm2 start bin/www --name=node-server
+    $ BACKEND_URL=http://192.168.1.32/shoov.local \
+      LOGGLY_TOKEN=802390n3-c3d4-4d44-a022-0nv7a34n8934 \
+      DEBUG=true \
+      pm2 start bin/www --name=node-server
 
 Possible environments:
 
 * __BACKEND_URL__ - url address of backend server. It's can't be alias for your ip (for example shoov.local) because docker doesn't know about your hosts. 
+* __LOGGLY_TOKEN__ - private loggly token. 
 * __DEBUG__ - enable debug mode, output all docker logs to stdout. _(optional)_
 * __VNC_PASSOWRD__ - password for connect to VNC. _(optional)_
 * __TIMEOUT_LIMIT__ - timeout in __seconds__ to start silenium container _(optional)_, by default 30 seconds.
 * __UPTIME_LIMIT__ - timeout in __minutes__ for maximum server uptime _(optional)_, by default 20 minutes.
-* __LOGGLY_TOKEN__ - private loggly token.
