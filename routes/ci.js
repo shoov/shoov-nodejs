@@ -72,6 +72,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
   // Determine a VNC password.
   var vncPassword = process.env.VNC_PASSOWRD || 'hola';
   var timeoutLimit = process.env.TIMEOUT_LIMIT || 30;
+  var uptimeLimit = process.env.UPTIME_LIMIT || 20;
   // Indicate of containers were already processed for remove.
   var removedContainers = false;
 
@@ -123,12 +124,17 @@ var execDocker = function(buildId, buildItemId, accessToken) {
               console.error('Can\'t start the container ' + sileniumContainerName);
               reject(err);
             }
-            // Set timeout.
+            // Set timeout for the time for which the silenium server should start.
             setTimeout(function() {
               if (!containerReady) {
                 reject(sileniumContainerName + ' couldn\'t start, and have timed out after ' + timeoutLimit + ' sec');
               }
             }, timeoutLimit * 1000);
+            // Set timeout for the maximum uptime.
+            setTimeout(function() {
+              var err = new Error('Uptime for ' + sileniumContainerName + ' is overtime.');
+              reject(err);
+            }, uptimeLimit * 60 * 1000);
           });
           // Read stream and wait until needed phrase.
           stream.on('data', function(chunk) {
@@ -208,6 +214,11 @@ var execDocker = function(buildId, buildItemId, accessToken) {
               console.error('Can\'t start the container ' + CIBuildContainerName);
               reject(err);
             }
+            // Set timeout for the maximum uptime.
+            setTimeout(function() {
+              var err = new Error('Uptime for ' + CIBuildContainerName + ' is overtime.');
+              reject(err);
+            }, uptimeLimit * 60 * 1000);
           });
           // Waits for a container to end.
           container.wait(function(err, data) {
