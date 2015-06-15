@@ -45,7 +45,7 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       console.log(JSON.parse(response));
     })
     .catch(function(err) {
-      console.log(err);
+      console.error(err);
     });
 
   res.json({message: 'Request accepted'});
@@ -98,8 +98,8 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         'name': sileniumContainerName
       }, function(err, container) {
         if (err) {
-          console.log('Can\'t create the container ' + sileniumContainerName);
-          console.log(err);
+          console.error('Can\'t create the container ' + sileniumContainerName);
+          console.error(err);
           reject(err);
         }
 
@@ -110,7 +110,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         // Attach to container.
         container.attach({logs: true, stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) {
-            console.log('Can\'t attach to the container ' + sileniumContainerName);
+            console.error('Can\'t attach to the container ' + sileniumContainerName);
             reject(err);
           }
           // Debug container output.
@@ -120,7 +120,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              console.log('Can\'t start the container ' + sileniumContainerName);
+              console.error('Can\'t start the container ' + sileniumContainerName);
               reject(err);
             }
             // Set timeout.
@@ -176,21 +176,23 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         'name': CIBuildContainerName
       }, function(err, container) {
         if (err) {
-          console.log('Can\'t create the container ' + CIBuildContainerName);
+          console.error('Can\'t create the container ' + CIBuildContainerName);
           reject(err);
         }
         // Save container in containers variable.
+        containers.push(container);
+
         console.log(CIBuildContainerName + ' container ID is ' + container.id);
 
-        containers.push(container);
         // Attach to container.
         container.attach({logs: true, stream: true, stdout: true, stderr: true}, function(err, stream) {
-          console.log('Successfully attached to ' + CIBuildContainerName);
-
           if (err) {
-            console.log('Can\'t attach to the container ' + CIBuildContainerName);
+            console.error('Can\'t attach to the container ' + CIBuildContainerName);
             reject(err);
           }
+
+          console.log('Successfully attached to ' + CIBuildContainerName);
+
           // Debug container output.
           if (debug) {
             stream.pipe(fs.createWriteStream(logs_dir + CIBuildContainerName + '.log', { encoding: 'utf8' }));
@@ -203,22 +205,22 @@ var execDocker = function(buildId, buildItemId, accessToken) {
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              console.log('Can\'t start the container ' + CIBuildContainerName);
+              console.error('Can\'t start the container ' + CIBuildContainerName);
               reject(err);
             }
           });
           // Waits for a container to end.
           container.wait(function(err, data) {
-            console.log(CIBuildContainerName + ' container is finished.');
-
             if (err) {
-              console.log('Error while the container ' + CIBuildContainerName + ' is finished.');
+              console.error('Error while the container ' + CIBuildContainerName + ' is finished.');
               reject(err);
             }
 
-            // TODO: figurout why it's happend
+            console.log(CIBuildContainerName + ' container is finished.');
+
+            // TODO: Figure out why it's happened.
             if (!result.log) {
-              console.log('Output from ' + CIBuildContainerName + ' container is empty');
+              console.error('Output from ' + CIBuildContainerName + ' container is empty');
               reject(err);
             }
 
@@ -251,7 +253,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
       containers.forEach(function(container, index) {
         container.remove(opts, function(err, data) {
           if (err) {
-            console.log('Can\'t delete the container ' + container.id);
+            console.error('Can\'t delete the container ' + container.id);
             reject(err);
           }
           removedContainers++;
@@ -286,7 +288,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         removeContainers();
       }
       // And show error.
-      console.log(err);
+      console.error(err);
     });
 
 };
