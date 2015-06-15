@@ -4,18 +4,39 @@ var Promise = require('bluebird');
 var request = require('request-promise');
 var Docker = require('dockerode');
 var ansi2html = require('ansi2html');
+var util = require('util');
+
+var debug = process.env.DEBUG || false;
 
 var fs = require('fs');
 var logs_dir = __dirname + '/../logs/';
 
-var debug = process.env.DEBUG || false;
+// Setup log system.
+var winston = require('winston');
+require('winston-loggly');
+
+var logger = new(winston.Logger)({
+  transports: [
+    new(winston.transports.Console)({
+      colorize: 'all',
+      timestamp: true,
+      level: (debug) ? 'debug' : 'error'
+    }),
+    new(winston.transports.Loggly)({
+      inputToken: process.env.LOGGLY_TOKEN,
+      subdomain: 'gizra',
+      tags: ['shoov-nodejs'],
+      json: true
+    })
+  ]
+});
 
 // Invoke a PR.
 router.get('/:buildItemId/:accessToken', function(req, res, next) {
   var buildItemId = req.params.buildItemId;
   var accessToken = req.params.accessToken;
 
-  console.log('Request received for Build Item ID ' + buildItemId);
+  logger.info('Request received for CI Build Item ID %d', buildItemId);
 
   var options = {
     url: process.env.BACKEND_URL + '/api/ci-build-items/' + buildItemId,
@@ -42,13 +63,19 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       return request(options);
     })
     .then(function(response) {
-      console.log(JSON.parse(response));
+      var json = JSON.parse(response);
+      if (json.data) {
+        logger.info('Build Item Id %d is finished and data uploaded to backend.', buildItemId);
+      }
+      else {
+        logger.error('Response from backend is invalid.', { response: response });
+      }
     })
     .catch(function(err) {
-      console.error(err);
+      logger.error('Error while work on CI Build Item Id %d', buildItemId, { message: err.message });
     });
 
-  res.json({message: 'Request accepted'});
+  res.json( { message: 'Request accepted' } );
 });
 
 /**
@@ -82,7 +109,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
    * @returns {Promise}
    */
   var runSilenium = function() {
-    console.log('Start ' + sileniumContainerName);
+    logger.info('Start %s', sileniumContainerName);
 
     return new Promise(function(resolve, reject) {
       // Determine if the container is ready, and can accept connections.
@@ -99,21 +126,22 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         'name': sileniumContainerName
       }, function(err, container) {
         if (err) {
-          console.error('Can\'t create the container ' + sileniumContainerName);
-          console.error(err);
-          reject(err);
+          logger.error('Can\'t create the container %s', sileniumContainerName);
+          reject(new Error(err));
+          console.log('balalaylka');
+          return;
         }
-
-        console.log(sileniumContainerName + ' container ID is ' + container.id);
-
-        // Save container in containers variable.
-        containers.push(container);
         // Attach to container.
         container.attach({logs: true, stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) {
-            console.error('Can\'t attach to the container ' + sileniumContainerName);
+            logger.error('Can\'t attach to the container %s', sileniumContainerName);
             reject(err);
           }
+          // Save container in containers variable.
+          containers.push(container);
+
+          logger.debug('%s container ID is %s', sileniumContainerName, container.id);
+
           // Debug container output.
           if (debug) {
             stream.pipe(fs.createWriteStream(logs_dir + sileniumContainerName + '.log', { encoding: 'utf8' }));
@@ -121,18 +149,18 @@ var execDocker = function(buildId, buildItemId, accessToken) {
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              console.error('Can\'t start the container ' + sileniumContainerName);
+              logger.error('Can\'t start the container %s', sileniumContainerName);
               reject(err);
             }
             // Set timeout for the time for which the silenium server should start.
             setTimeout(function() {
               if (!containerReady) {
-                reject(sileniumContainerName + ' couldn\'t start, and have timed out after ' + timeoutLimit + ' sec');
+                reject(util.format('%s couldn\'t start, and have timed out after %d sec', sileniumContainerName, timeoutLimit));
               }
             }, timeoutLimit * 1000);
             // Set timeout for the maximum uptime.
             setTimeout(function() {
-              var err = new Error('Uptime for ' + sileniumContainerName + ' is overtime.');
+              var err = new Error(util.format('Uptime for %s is overtime.', sileniumContainerName));
               reject(err);
             }, uptimeLimit * 60 * 1000);
           });
@@ -142,7 +170,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
             var string = chunk.toString();
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
-              console.log(sileniumContainerName + ' is ready!');
+              logger.info('%s is ready!', sileniumContainerName);
               resolve(true);
             }
           });
@@ -157,7 +185,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
    * @returns {Promise}
    */
   var runCIBuild = function() {
-    console.log('Start ' + CIBuildContainerName);
+    logger.info('Start %s', CIBuildContainerName);
 
     return new Promise(function(resolve, reject) {
       // Result for save all output logs and exit code.
@@ -182,22 +210,19 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         'name': CIBuildContainerName
       }, function(err, container) {
         if (err) {
-          console.error('Can\'t create the container ' + CIBuildContainerName);
+          logger.error('Can\'t create the container %s', CIBuildContainerName);
           reject(err);
         }
-        // Save container in containers variable.
-        containers.push(container);
-
-        console.log(CIBuildContainerName + ' container ID is ' + container.id);
-
         // Attach to container.
         container.attach({logs: true, stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) {
-            console.error('Can\'t attach to the container ' + CIBuildContainerName);
+            logger.error('Can\'t attach to the container %s', CIBuildContainerName);
             reject(err);
           }
+          // Save container in containers variable.
+          containers.push(container);
 
-          console.log('Successfully attached to ' + CIBuildContainerName);
+          logger.debug('%s container ID is %s', CIBuildContainerName, container.id);
 
           // Debug container output.
           if (debug) {
@@ -211,28 +236,30 @@ var execDocker = function(buildId, buildItemId, accessToken) {
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              console.error('Can\'t start the container ' + CIBuildContainerName);
+              logger.error('Can\'t start the container ', CIBuildContainerName);
               reject(err);
             }
             // Set timeout for the maximum uptime.
             setTimeout(function() {
-              var err = new Error('Uptime for ' + CIBuildContainerName + ' is overtime.');
-              reject(err);
+              var errMsg = util.format('Uptime for %s is overtime.', CIBuildContainerName);
+              logger.error(errMsg);
+              reject(new Error(errMsg));
             }, uptimeLimit * 60 * 1000);
           });
           // Waits for a container to end.
           container.wait(function(err, data) {
             if (err) {
-              console.error('Error while the container ' + CIBuildContainerName + ' is finished.');
+              logger.error('Error while the container %s is finished.', CIBuildContainerName);
               reject(err);
             }
 
-            console.log(CIBuildContainerName + ' container is finished.');
+            logger.info('%s container is finished.', CIBuildContainerName);
 
             // TODO: Figure out why it's happened.
             if (!result.log) {
-              console.error('Output from ' + CIBuildContainerName + ' container is empty');
-              reject(err);
+              var errMsg = util.format('Output from %s container is empty', CIBuildContainerName);
+              logger.error(errMsg);
+              reject(new Error(errMsg));
             }
 
             // Get the exit code.
@@ -264,9 +291,12 @@ var execDocker = function(buildId, buildItemId, accessToken) {
       containers.forEach(function(container, index) {
         container.remove(opts, function(err, data) {
           if (err) {
-            console.error('Can\'t delete the container ' + container.id);
+            logger.error('Can\'t delete the container %d', container.id);
             reject(err);
           }
+
+          logger.debug('The container %s removed', container.id);
+
           removedContainers++;
           // If all containers are removed we can return.
           if (removedContainers >= countContainers) {
@@ -299,7 +329,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         removeContainers();
       }
       // And show error.
-      console.error(err);
+      logger.error('Error while executing docker containers.', { message: err.message });
     });
 
 };

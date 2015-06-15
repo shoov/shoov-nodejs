@@ -19,3 +19,4 @@ Possible environments:
 * __VNC_PASSOWRD__ - password for connect to VNC. _(optional)_
 * __TIMEOUT_LIMIT__ - timeout in __seconds__ to start silenium container _(optional)_, by default 30 seconds.
 * __UPTIME_LIMIT__ - timeout in __minutes__ for maximum server uptime _(optional)_, by default 20 minutes.
+* __LOGGLY_TOKEN__ - private loggly token.
