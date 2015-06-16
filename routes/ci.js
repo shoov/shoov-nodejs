@@ -8,28 +8,34 @@ var util = require('util');
 
 var debug = process.env.DEBUG || false;
 
-var fs = require('fs');
-var logs_dir = __dirname + '/../logs/';
-
 // Setup log system.
 var winston = require('winston');
 require('winston-loggly');
 
-var log = new(winston.Logger)({
+var winstonTransports = {
   transports: [
     new(winston.transports.Console)({
       colorize: 'all',
       timestamp: true,
       level: (debug) ? 'debug' : 'info'
-    }),
+    })
+  ]
+};
+
+if (process.env.LOGGLY_TOKEN && process.env.LOGGLY_SUBDOMAIN) {
+  winstonTransports.transports.push(
     new(winston.transports.Loggly)({
       inputToken: process.env.LOGGLY_TOKEN,
-      subdomain: 'gizra',
+      subdomain: process.env.LOGGLY_SUBDOMAIN,
       tags: ['shoov-nodejs'],
       json: true
     })
-  ]
-});
+  );
+}
+
+var log = new(winston.Logger)(winstonTransports);
+
+log.error('Stupid error only for test.');
 
 // Invoke a PR.
 router.get('/:buildItemId/:accessToken', function(req, res, next) {
@@ -53,13 +59,12 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
   request(options)
     .then(function(response) {
       var data = JSON.parse(response).data[0];
-      //throw new Error('simple test');
       return execDocker(data.build, buildItemId, accessToken);
     })
     .then(function(response) {
       // Convert ANSI colors to HTML.
       if (!response || !response.log) {
-        throw new Error('Response from docker execution function is incorrect');
+        throw new Error('Invalid response from Docker');
       }
       options.form.log = ansi2html(response.log);
       // Set the build status to "done" or "error" by the exit code.
@@ -104,11 +109,11 @@ var execDocker = function(buildId, buildItemId, accessToken) {
   var vncPassword = process.env.VNC_PASSOWRD || 'hola';
   var timeoutLimit = process.env.DOCKER_STARTUP_TIMEOUT || 30;
   var uptimeLimit = process.env.DOCKER_RUN_TIMEOUT || 1200;
-  // Indicate of containers were already processed for remove.
+  // Indicate if containers were already processed for remove.
   var removedContainers = false;
 
   /**
-   * Function creates and starts Silenium container.
+   * Creates and starts Silenium container.
    *
    * @returns {Promise}
    */
@@ -144,14 +149,10 @@ var execDocker = function(buildId, buildItemId, accessToken) {
 
           log.debug('%s container ID is %s', sileniumContainerName, container.id);
 
-          // Debug container output.
-          if (debug) {
-            stream.pipe(fs.createWriteStream(logs_dir + sileniumContainerName + '.log', { encoding: 'utf8' }));
-          }
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              log.error('Can\'t start the container %s', sileniumContainerName);
+              log.error("Can't start the container %s", sileniumContainerName);
               return reject(err);
             }
             // Set timeout for the time for which the silenium server should start.
@@ -163,7 +164,8 @@ var execDocker = function(buildId, buildItemId, accessToken) {
             }, timeoutLimit * 1000);
             // Set timeout for the maximum uptime.
             setTimeout(function() {
-              throw new Error(util.format('%s execution has timed out after %d minutes', sileniumContainerName, uptimeLimit / 60));
+              var errObj = new Error(util.format('%s execution has timed out after %d minutes', sileniumContainerName, uptimeLimit / 60));
+              return reject(errObj);
             }, uptimeLimit * 1000);
           });
           // Read stream and wait until needed phrase.
@@ -172,7 +174,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
             var string = chunk.toString();
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
-              log.info('%s is ready!', sileniumContainerName);
+              log.info('Container %s is ready.', sileniumContainerName);
               return resolve(true);
             }
           });
@@ -182,7 +184,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
   };
 
   /**
-   * Function creates and starts CI Build container.
+   * Creates and starts CI Build container.
    *
    * @returns {Promise}
    */
@@ -226,10 +228,6 @@ var execDocker = function(buildId, buildItemId, accessToken) {
 
           log.debug('%s container ID is %s', CIBuildContainerName, container.id);
 
-          // Debug container output.
-          if (debug) {
-            stream.pipe(fs.createWriteStream(logs_dir + CIBuildContainerName + '.log', { encoding: 'utf8' }));
-          }
           // Read a stream.
           stream.on('data', function(chunk) {
             // Get the data from the terminal.
@@ -243,7 +241,8 @@ var execDocker = function(buildId, buildItemId, accessToken) {
             }
             // Set timeout for the maximum uptime.
             setTimeout(function() {
-              throw new Error(util.format('%s execution has timed out after %d minutes', sileniumContainerName, uptimeLimit / 60));
+              var errObj = new Error(util.format('%s execution has timed out after %d minutes', CIBuildContainerName, uptimeLimit / 60));
+              return reject(errObj);
             }, uptimeLimit * 1000);
           });
           // Waits for a container to end.
@@ -299,7 +298,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
           removedContainers++;
           // If all containers are removed we can return.
           if (removedContainers >= countContainers) {
-            resolve(true)
+            resolve(true);
           }
         })
       });

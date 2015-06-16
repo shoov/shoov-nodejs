@@ -2,23 +2,28 @@
 
 This server is responsible for creating PRs for visual regressions, and executing live monitor tests.
 
-## Install
+## Installation
 
 Install all node dependencies:
 
-    $ npm install
+```bash
+$ npm install
+```
 
 ## Execute
 
-    $ BACKEND_URL=http://192.168.1.32/shoov.local \
-      LOGGLY_TOKEN=802390n3-c3d4-4d44-a022-0nv7a34n8934 \
-      DEBUG=true \
-      pm2 start bin/www --name=node-server
+```bash
+$ BACKEND_URL=http://example.local \
+  LOGGLY_TOKEN=<token> \
+  LOGGLY_SUBDOMAIN=<subdomain> \
+  pm2 start bin/www --name=shoov-nodejs
+```
 
 Possible environments:
 
-* __BACKEND_URL__ - The url address of backend server. It's can't be alias for your ip (for example shoov.local) because docker doesn't know about your hosts. 
-* __LOGGLY_TOKEN__ - Private token to Loggly service. 
+* __BACKEND_URL__ - The url address of backend server. When used locally it should be the IP address and not the site alias.
+* __LOGGLY_TOKEN__ - Private token for Loggly service. 
+* __LOGGLY_SUBDOMAIN__ - Subdomain for Loggly service. 
 * __DEBUG__ - Enable debug mode, display debug messages and safe logs for each ci build in logs. _(optional)_
 * __VNC_PASSOWRD__ - The password to connect to VNC. _(optional)_
 * __DOCKER_STARTUP_TIMEOUT__ - Determines the time in seconds which the docker may spend in starting up, and getting ready for execution. Defaults to 30 seconds.
