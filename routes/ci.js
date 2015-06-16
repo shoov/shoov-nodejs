@@ -102,8 +102,8 @@ var execDocker = function(buildId, buildItemId, accessToken) {
   var sileniumContainerName = 'silenium-' + buildItemId;
   // Determine a VNC password.
   var vncPassword = process.env.VNC_PASSOWRD || 'hola';
-  var timeoutLimit = process.env.TIMEOUT_LIMIT || 30;
-  var uptimeLimit = process.env.UPTIME_LIMIT || 20;
+  var timeoutLimit = process.env.DOCKER_STARTUP_TIMEOUT || 30;
+  var uptimeLimit = process.env.DOCKER_RUN_TIMEOUT || 1200;
   // Indicate of containers were already processed for remove.
   var removedContainers = false;
 
@@ -157,15 +157,14 @@ var execDocker = function(buildId, buildItemId, accessToken) {
             // Set timeout for the time for which the silenium server should start.
             setTimeout(function() {
               if (!containerReady) {
-                var errMsg = util.format('%s couldn\'t start, and have timed out after %d sec', sileniumContainerName, timeoutLimit);
+                var errMsg = util.format('%s couldn\'t start, and have timed out after %d seconds', sileniumContainerName, timeoutLimit);
                 return reject(errMsg);
               }
             }, timeoutLimit * 1000);
             // Set timeout for the maximum uptime.
             setTimeout(function() {
-              var errMsg = new Error(util.format('Uptime for %s is overtime.', sileniumContainerName));
-              return reject(errMsg);
-            }, uptimeLimit * 60 * 1000);
+              throw new Error(util.format('%s execution has timed out after %d minutes', sileniumContainerName, uptimeLimit / 60));
+            }, uptimeLimit * 1000);
           });
           // Read stream and wait until needed phrase.
           stream.on('data', function(chunk) {
@@ -244,10 +243,8 @@ var execDocker = function(buildId, buildItemId, accessToken) {
             }
             // Set timeout for the maximum uptime.
             setTimeout(function() {
-              var errMsg = util.format('Uptime for %s is overtime.', CIBuildContainerName);
-              log.error(errMsg);
-              return reject(new Error(errMsg));
-            }, uptimeLimit * 60 * 1000);
+              throw new Error(util.format('%s execution has timed out after %d minutes', sileniumContainerName, uptimeLimit / 60));
+            }, uptimeLimit * 1000);
           });
           // Waits for a container to end.
           container.wait(function(err, data) {

@@ -17,9 +17,9 @@ Install all node dependencies:
 
 Possible environments:
 
-* __BACKEND_URL__ - url address of backend server. It's can't be alias for your ip (for example shoov.local) because docker doesn't know about your hosts. 
-* __LOGGLY_TOKEN__ - private loggly token. 
-* __DEBUG__ - enable debug mode, output all docker logs to stdout. _(optional)_
-* __VNC_PASSOWRD__ - password for connect to VNC. _(optional)_
-* __TIMEOUT_LIMIT__ - timeout in __seconds__ to start silenium container _(optional)_, by default 30 seconds.
-* __UPTIME_LIMIT__ - timeout in __minutes__ for maximum server uptime _(optional)_, by default 20 minutes.
+* __BACKEND_URL__ - The url address of backend server. It's can't be alias for your ip (for example shoov.local) because docker doesn't know about your hosts. 
+* __LOGGLY_TOKEN__ - Private token to Loggly service. 
+* __DEBUG__ - Enable debug mode, display debug messages and safe logs for each ci build in logs. _(optional)_
+* __VNC_PASSOWRD__ - The password to connect to VNC. _(optional)_
+* __DOCKER_STARTUP_TIMEOUT__ - Determines the time in seconds which the docker may spend in starting up, and getting ready for execution. Defaults to 30 seconds.
+* __DOCKER_RUN_TIMEOUT__ - Determines the time in seconds which the docker may execute the tests. Defaults to 1200 seconds (20 minutes).
