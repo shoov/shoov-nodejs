@@ -58,6 +58,9 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     })
     .then(function(response) {
       // Convert ANSI colors to HTML.
+      if (!response || !response.log) {
+        throw new Error('Response from docker execution function is incorrect');
+      }
       options.form.log = ansi2html(response.log);
       // Set the build status to "done" or "error" by the exit code.
       options.form.status = !response.exitCode ? 'done' : 'error';
@@ -66,14 +69,14 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     .then(function(response) {
       var json = JSON.parse(response);
       if (json.data) {
-        log.info('Build Item Id %d is finished and data uploaded to backend.', buildItemId);
+        log.info('Build Item ID %d has finished and data uploaded to backend.', buildItemId);
       }
       else {
         log.error('Response from backend is invalid.', { response: response });
       }
     })
     .catch(function(err) {
-      log.error('Error while work on CI Build Item Id %d', buildItemId, { message: err.message });
+      log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
     });
 
   res.json( { message: 'Request accepted' } );
@@ -257,8 +260,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
 
             // TODO: Figure out why it's happened.
             if (!result.log) {
-              var errMsg = util.format('Output from %s container is empty', CIBuildContainerName);
-              log.error(errMsg);
+              var errMsg = util.format('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
               return reject(new Error(errMsg));
             }
 
@@ -329,7 +331,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         removeContainers();
       }
       // And show error.
-      log.error('Error while executing docker containers.', { message: err.message });
+      log.error('Error while executing docker containers.', { errMessage: err.message });
     });
 
 };
