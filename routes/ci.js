@@ -20,7 +20,7 @@ var log = new(winston.Logger)({
     new(winston.transports.Console)({
       colorize: 'all',
       timestamp: true,
-      level: (debug) ? 'debug' : 'error'
+      level: (debug) ? 'debug' : 'info'
     }),
     new(winston.transports.Loggly)({
       inputToken: process.env.LOGGLY_TOKEN,
