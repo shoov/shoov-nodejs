@@ -35,8 +35,6 @@ if (process.env.LOGGLY_TOKEN && process.env.LOGGLY_SUBDOMAIN) {
 
 var log = new(winston.Logger)(winstonTransports);
 
-log.error('Stupid error only for test.');
-
 // Invoke a PR.
 router.get('/:buildItemId/:accessToken', function(req, res, next) {
   var buildItemId = req.params.buildItemId;
