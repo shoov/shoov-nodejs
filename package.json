@@ -21,6 +21,7 @@
     "request-promise": "^0.4.1",
     "serve-favicon": "~2.2.0",
     "winston": "^1.0.0",
+    "express-winston": "^0.3.1",
     "winston-loggly": "^1.1.0"
   }
 }
