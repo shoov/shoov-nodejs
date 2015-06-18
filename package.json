@@ -1,9 +1,10 @@
 {
-  "name": "app",
-  "version": "0.0.0",
+  "name": "shoov-nodejs",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node ./bin/www",
+    "test": "mocha"
   },
   "dependencies": {
     "ansi2html": "0.0.1",
