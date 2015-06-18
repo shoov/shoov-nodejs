@@ -5,6 +5,7 @@ var request = require('request-promise');
 var Docker = require('dockerode');
 var ansi2html = require('ansi2html');
 var util = require('util');
+var yaml = require('js-yaml');
 
 var debug = process.env.DEBUG || false;
 
@@ -53,11 +54,41 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     }
   };
 
+  var ciBuildItem = undefined;
+  var userDetail = undefined;
+  var buildDetail = undefined;
+
   // Set the build status to "in progress".
   request(options)
     .then(function(response) {
-      var data = JSON.parse(response).data[0];
-      return execDocker(data.build, buildItemId, accessToken);
+      ciBuildItem = JSON.parse(response).data[0];
+      return getUser(accessToken);
+    })
+    .then(function(response) {
+      userDetail = JSON.parse(response).data[0];
+      return getBuild(ciBuildItem.build, accessToken);
+    })
+    .then(function(response) {
+      buildDetail = JSON.parse(response).data[0];
+      var userName = buildDetail.label.split('/')[0];
+      var repositoryName = buildDetail.label.split('/')[1];
+      return getShoovConfig(userName, repositoryName, userDetail.github_access_token);
+    })
+    .then(function(response) {
+      var data = JSON.parse(response);
+      var shoovConfig = yaml.safeLoad(new Buffer(data.content, 'base64').toString('utf8'));
+
+      if (shoovConfig.addons.indexOf('selenium') > -1) {
+        console.log('Addon selenium enabled');
+      }
+      else {
+        console.log('Without addons');
+      }
+
+      return;
+      
+      // Execute containers.
+      return execDocker(ciBuildItem.build, buildItemId, accessToken);
     })
     .then(function(response) {
       // Convert ANSI colors to HTML.
@@ -84,6 +115,66 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
 
   res.json( { message: 'Request accepted' } );
 });
+
+
+/**
+ *
+ * @param accessToken
+ * @returns {*|exports}
+ */
+var getUser = function(accessToken) {
+  var backendUrl = process.env.BACKEND_URL;
+  var options = {
+    url: backendUrl + '/api/me/',
+    qs: {
+      access_token: accessToken,
+      fields: 'id,label,github_access_token',
+      github_access_token: true
+    }
+  };
+
+  return request(options);
+};
+
+/**
+ * Get Build data.
+ *
+ * @param buildId
+ *   The build ID.
+ *
+ * @returns {*}
+ */
+var getBuild = function(buildId, accessToken) {
+  var backendUrl = process.env.BACKEND_URL;
+  var options = {
+    url: backendUrl + '/api/ci-builds/' + buildId,
+    qs: {
+      access_token: accessToken,
+      fields: 'id,label,git_branch,repository,private_key'
+    }
+  };
+
+  return request(options);
+};
+
+/**
+ *
+ * @param userName
+ * @param repositoryName
+ * @param accessToken
+ * @returns {*|exports}
+ */
+var getShoovConfig = function(userName, repositoryName, accessToken) {
+  var options = {
+    'url': 'https://api.github.com/repos/' + userName + '/' + repositoryName + '/contents/.shoov.yml',
+    'headers': {
+      'Authorization': 'token ' + accessToken,
+      'User-Agent': 'Shoov.io'
+    }
+  };
+
+  return request(options);
+};
 
 /**
  * Execute all dockers containers.
