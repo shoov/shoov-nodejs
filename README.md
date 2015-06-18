@@ -1,6 +1,8 @@
-# NodeJs backend server for Shoov.
+[![Build Status](https://travis-ci.org/shoov/shoov.svg?branch=master)](https://travis-ci.org/shoov/shoov)
 
-This server is responsible for creating PRs for visual regressions, and executing live monitor tests.
+# NodeJs backend server for Shoov. 
+
+> This server is responsible for creating PRs for visual regressions, and executing live monitor tests.
 
 ## Installation
 
