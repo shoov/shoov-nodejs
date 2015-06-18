@@ -15,7 +15,7 @@ describe('Shoov NodeJS Server', function() {
     server.listen(port);
   });
 
-  it('should running', function(done) {
+  it('should be running', function(done) {
     http.get(url, function (res) {
       assert.equal(200, res.statusCode);
       done();
