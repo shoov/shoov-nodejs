@@ -83,8 +83,8 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       var shoovConfig = yaml.safeLoad(new Buffer(data.content, 'base64').toString('utf8'));
 
       // Determine the need in silenium container.
-      var withSilenium = (shoovConfig.addons.indexOf('selenium') > -1);
-      
+      var withSilenium = (shoovConfig.addons && shoovConfig.addons.indexOf('selenium') > -1) || false;
+
       // Execute containers.
       return execDocker(ciBuildItem.build, buildItemId, accessToken, withSilenium);
     })
@@ -220,16 +220,16 @@ var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
    * @returns {Promise}
    */
   var runSilenium = function() {
-    log.info('Start %s', sileniumContainerName);
-
     return new Promise(function(resolve, reject) {
+      // Skip creating Silenium container because user configuration doesn't support this step.
+      if (!withSilenium) {
+        return resolve(true);
+      }
+
       // Determine if the container is ready, and can accept connections.
       var containerReady = false;
 
-      // Skip creating Silenium container because user configuration doesn't support this step.
-      if (!withSilenium) {
-        resolve(true);
-      }
+      log.info('Starting %s', sileniumContainerName);
 
       // Create Silenium container.
       docker.createContainer({
@@ -297,8 +297,6 @@ var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
    * @returns {Promise}
    */
   var runCIBuild = function() {
-    log.info('Start %s', CIBuildContainerName);
-
     return new Promise(function(resolve, reject) {
       // Result for save all output logs and exit code.
       var result = {
@@ -326,6 +324,11 @@ var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
         containerOptions.HostConfig = {
           "Links": [sileniumContainerName + ':silenium']
         };
+
+        log.info('Starting %s with Silenium add-on', CIBuildContainerName);
+      }
+      else {
+        log.info('Starting %s', CIBuildContainerName);
       }
 
       // Create CI Build container.
