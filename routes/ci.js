@@ -8,6 +8,7 @@ var util = require('util');
 var yaml = require('js-yaml');
 
 var debug = process.env.DEBUG || false;
+var backendUrl = process.env.BACKEND_URL;
 
 // Setup log system.
 var winston = require('winston');
@@ -44,7 +45,7 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
   log.info('Request received for CI Build Item ID %d', buildItemId);
 
   var options = {
-    url: process.env.BACKEND_URL + '/api/ci-build-items/' + buildItemId,
+    url: backendUrl + '/api/ci-build-items/' + buildItemId,
     method: 'PATCH',
     qs: {
       access_token: accessToken
@@ -124,7 +125,6 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
  *  HTTP Response in promise wrapper.
  */
 var getUser = function(accessToken) {
-  var backendUrl = process.env.BACKEND_URL;
   var options = {
     url: backendUrl + '/api/me/',
     qs: {
@@ -149,7 +149,6 @@ var getUser = function(accessToken) {
  *  HTTP Response in promise wrapper.
  */
 var getBuild = function(buildId, accessToken) {
-  var backendUrl = process.env.BACKEND_URL;
   var options = {
     url: backendUrl + '/api/ci-builds/' + buildId,
     qs: {
@@ -311,7 +310,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
       var containerOptions = {
         'Image': 'amitaibu/php-ci',
         'Env': [
-          'BACKEND_URL=' + process.env.BACKEND_URL
+          'BACKEND_URL=' + backendUrl
         ],
         'Cmd': [
           '/home/shoov/main.sh',
