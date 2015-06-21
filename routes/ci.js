@@ -79,9 +79,23 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     })
     // Get Shoov configuration file from repository.
     .then(function(response) {
-      var data = JSON.parse(response);
-      var shoovConfig = yaml.safeLoad(new Buffer(data.content, 'base64').toString('utf8'));
+      if (response === undefined) {
+        throw new Error("Can't get .shoov.yml");
+      }
 
+      try {
+        var data = JSON.parse(response);
+        var contentDecoded = new Buffer(data.content, 'base64').toString('utf8');
+        var shoovConfig = yaml.safeLoad(contentDecoded);
+      }
+      catch (e) {
+        throw new Error('Invalid .shoov.yml: ' + err.message);
+      }
+
+      if (shoovConfig === undefined) {
+        throw new Error('.shoov.yml is empty');
+      }
+      
       // Determine the need in silenium container.
       var withSilenium = (shoovConfig.addons && shoovConfig.addons.indexOf('selenium') > -1) || false;
 
@@ -182,7 +196,18 @@ var getShoovConfig = function(userName, repositoryName, accessToken) {
     }
   };
 
-  return request(options);
+  return request(options)
+    .then(function(result) {
+      return result;
+    })
+    .catch(function(err) {
+      if (err.statusCode == 404) {
+        log.error('.shoov.yml not exist in repository %s/%s', userName, repositoryName);
+      }
+      else {
+        log.error("Can't get .shoov.yml in %s/%s", userName, repositoryName, { errMessage: err.message } );
+      }
+    });
 };
 
 /**
