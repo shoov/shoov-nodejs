@@ -58,37 +58,34 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
   var userDetail = undefined;
   var buildDetail = undefined;
 
-  // Set the build status to "in progress".
+  // Set the build status to "in progress" and receive CI Build Item data.
   request(options)
     .then(function(response) {
       ciBuildItem = JSON.parse(response).data[0];
       return getUser(accessToken);
     })
+    // Get user data assigned with CI Build Item.
     .then(function(response) {
       userDetail = JSON.parse(response).data[0];
       return getBuild(ciBuildItem.build, accessToken);
     })
+    // Get CI Build data.
     .then(function(response) {
       buildDetail = JSON.parse(response).data[0];
       var userName = buildDetail.label.split('/')[0];
       var repositoryName = buildDetail.label.split('/')[1];
       return getShoovConfig(userName, repositoryName, userDetail.github_access_token);
     })
+    // Get Shoov configuration file from repository.
     .then(function(response) {
       var data = JSON.parse(response);
       var shoovConfig = yaml.safeLoad(new Buffer(data.content, 'base64').toString('utf8'));
 
-      if (shoovConfig.addons.indexOf('selenium') > -1) {
-        console.log('Addon selenium enabled');
-      }
-      else {
-        console.log('Without addons');
-      }
-
-      return;
+      // Determine the need in silenium container.
+      var withSilenium = (shoovConfig.addons.indexOf('selenium') > -1);
       
       // Execute containers.
-      return execDocker(ciBuildItem.build, buildItemId, accessToken);
+      return execDocker(ciBuildItem.build, buildItemId, accessToken, withSilenium);
     })
     .then(function(response) {
       // Convert ANSI colors to HTML.
@@ -118,9 +115,13 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
 
 
 /**
+ * Receive a user data for specific REST token.
  *
  * @param accessToken
- * @returns {*|exports}
+ *  Drupal restful private user token
+ *
+ * @returns {Promise}
+ *  HTTP Response in promise wrapper.
  */
 var getUser = function(accessToken) {
   var backendUrl = process.env.BACKEND_URL;
@@ -137,12 +138,15 @@ var getUser = function(accessToken) {
 };
 
 /**
- * Get Build data.
+ * Get CI Build data.
  *
  * @param buildId
- *   The build ID.
+ *  The build ID.
+ * @param accessToken
+ *  Drupal restful private user token
  *
- * @returns {*}
+ * @returns {Promise}
+ *  HTTP Response in promise wrapper.
  */
 var getBuild = function(buildId, accessToken) {
   var backendUrl = process.env.BACKEND_URL;
@@ -158,11 +162,17 @@ var getBuild = function(buildId, accessToken) {
 };
 
 /**
+ * Get shoov configuration file from user repository.
  *
  * @param userName
+ *  The owner username of repository.
  * @param repositoryName
+ *  The repository name.
  * @param accessToken
- * @returns {*|exports}
+ *  Drupal restful private user token
+ *
+ * @returns {Promise}
+ *  HTTP response in promise wrapper.
  */
 var getShoovConfig = function(userName, repositoryName, accessToken) {
   var options = {
@@ -180,13 +190,17 @@ var getShoovConfig = function(userName, repositoryName, accessToken) {
  * Execute all dockers containers.
  *
  * @param buildId
- *  ID of CI Build on the backend.
+ *  The ID of CI Build on the backend.
+ * @param buildItemId
+ *  The ID of CI Build Item on the backend.
  * @param accessToken
  *  Access token of user creator of CI Build.
+ * @param withSilenium
+ *  Determine the need execute the chain with silenium or not.
  *
  * @returns {Promise}
  */
-var execDocker = function(buildId, buildItemId, accessToken) {
+var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
   // Init a docker object.
   var docker = new Docker();
   // All running containers.
@@ -213,6 +227,12 @@ var execDocker = function(buildId, buildItemId, accessToken) {
       // Determine if the container is ready, and can accept connections.
       var containerReady = false;
 
+      // Skip creating Silenium container because user configuration doesn't support this step.
+      if (!withSilenium) {
+        resolve(true);
+      }
+
+      // Create Silenium container.
       docker.createContainer({
         'Image': 'elgalu/selenium:v2.46.0-base1',
         'Env': [
@@ -287,7 +307,8 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         exitCode: 0
       };
 
-      docker.createContainer({
+      // Predefine container options.
+      var containerOptions = {
         'Image': 'amitaibu/php-ci',
         'Env': [
           'BACKEND_URL=' + process.env.BACKEND_URL
@@ -297,11 +318,19 @@ var execDocker = function(buildId, buildItemId, accessToken) {
           buildId,
           accessToken
         ],
-        'HostConfig': {
-          "Links": [sileniumContainerName + ':silenium']
-        },
         'name': CIBuildContainerName
-      }, function(err, container) {
+      };
+
+      // If shoov configuration contain silenium add-on and silenium container successfully
+      // started then link CI Build container with Silenium container.
+      if (withSilenium && sileniumContainerName) {
+        containerOptions.HostConfig = {
+          "Links": [sileniumContainerName + ':silenium']
+        };
+      }
+
+      // Create CI Build container.
+      docker.createContainer(containerOptions, function(err, container) {
         if (err) {
           log.error('Can\'t create the container %s', CIBuildContainerName);
           return reject(err);
