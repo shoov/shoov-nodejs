@@ -12,7 +12,7 @@ Install all node dependencies:
 $ npm install
 
 # Pull docker containers
-docker pull amitaibi/php-ci
+docker pull amitaibu/php-ci
 docker pull elgalu/selenium:v2.46.0-base1
 ```
 
