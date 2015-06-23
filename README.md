@@ -8,7 +8,12 @@
 Install all node dependencies:
 
 ```bash
+# Install packages
 $ npm install
+
+# Pull docker containers
+docker pull amitaibi/php-ci
+docker pull elgalu/selenium:v2.46.0-base1
 ```
 
 ## Execute
