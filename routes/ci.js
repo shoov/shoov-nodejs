@@ -55,9 +55,9 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     }
   };
 
-  var ciBuildItem = undefined;
-  var userDetail = undefined;
-  var buildDetail = undefined;
+  var ciBuildItem;
+  var userDetail;
+  var buildDetail;
 
   // Set the build status to "in progress" and receive CI Build Item data.
   request(options)
@@ -70,7 +70,7 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       userDetail = JSON.parse(response).data[0];
       return getBuild(ciBuildItem.build, accessToken);
     })
-    // Get CI Build data.
+    // Get the repository name from the CI Build.
     .then(function(response) {
       buildDetail = JSON.parse(response).data[0];
       var userName = buildDetail.label.split('/')[0];
@@ -79,7 +79,7 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     })
     // Get Shoov configuration file from repository.
     .then(function(response) {
-      if (response === undefined) {
+      if (!response) {
         throw new Error("Can't get .shoov.yml");
       }
 
@@ -92,7 +92,7 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
         throw new Error('Invalid .shoov.yml: ' + err.message);
       }
 
-      if (shoovConfig === undefined) {
+      if (!shoovConfig) {
         throw new Error('.shoov.yml is empty');
       }
       
