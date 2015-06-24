@@ -75,7 +75,7 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       buildDetail = JSON.parse(response).data[0];
       var userName = buildDetail.label.split('/')[0];
       var repositoryName = buildDetail.label.split('/')[1];
-      return getShoovConfig(userName, repositoryName, userDetail.github_access_token);
+      return getShoovConfig(userName, repositoryName, buildDetail.git_branch, userDetail.github_access_token);
     })
     // Get Shoov configuration file from repository.
     .then(function(response) {
@@ -97,10 +97,10 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       }
       
       // Determine the need in silenium container.
-      var withSilenium = (shoovConfig.addons && shoovConfig.addons.indexOf('selenium') > -1) || false;
+      var withSelenium = (shoovConfig.addons && shoovConfig.addons.indexOf('selenium') > -1) || false;
 
       // Execute containers.
-      return execDocker(ciBuildItem.build, buildItemId, accessToken, withSilenium);
+      return execDocker(ciBuildItem.build, buildItemId, accessToken, withSelenium);
     })
     .then(function(response) {
       // Convert ANSI colors to HTML.
@@ -187,9 +187,9 @@ var getBuild = function(buildId, accessToken) {
  * @returns {Promise}
  *  HTTP response in promise wrapper.
  */
-var getShoovConfig = function(userName, repositoryName, accessToken) {
+var getShoovConfig = function(userName, repositoryName, branchName, accessToken) {
   var options = {
-    'url': 'https://api.github.com/repos/' + userName + '/' + repositoryName + '/contents/.shoov.yml',
+    'url': 'https://api.github.com/repos/' + userName + '/' + repositoryName + '/contents/.shoov.yml?ref=' + branchName,
     'headers': {
       'Authorization': 'token ' + accessToken,
       'User-Agent': 'Shoov.io'
@@ -219,12 +219,12 @@ var getShoovConfig = function(userName, repositoryName, accessToken) {
  *  The ID of CI Build Item on the backend.
  * @param accessToken
  *  Access token of user creator of CI Build.
- * @param withSilenium
+ * @param withSelenium
  *  Determine the need execute the chain with silenium or not.
  *
  * @returns {Promise}
  */
-var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
+var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   // Init a docker object.
   var docker = new Docker();
   // All running containers.
@@ -240,14 +240,14 @@ var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
   var removedContainers = false;
 
   /**
-   * Creates and starts Silenium container.
+   * Creates and starts Selenium container.
    *
    * @returns {Promise}
    */
-  var runSilenium = function() {
+  var runSelenium = function() {
     return new Promise(function(resolve, reject) {
-      // Skip creating Silenium container because user configuration doesn't support this step.
-      if (!withSilenium) {
+      // Skip creating Selenium container because user configuration doesn't support this step.
+      if (!withSelenium) {
         return resolve(true);
       }
 
@@ -256,7 +256,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
 
       log.info('Starting %s', sileniumContainerName);
 
-      // Create Silenium container.
+      // Create Selenium container.
       docker.createContainer({
         'Image': 'elgalu/selenium:v2.46.0-base1',
         'Env': [
@@ -344,13 +344,13 @@ var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
       };
 
       // If shoov configuration contain silenium add-on and silenium container successfully
-      // started then link CI Build container with Silenium container.
-      if (withSilenium && sileniumContainerName) {
+      // started then link CI Build container with Selenium container.
+      if (withSelenium && sileniumContainerName) {
         containerOptions.HostConfig = {
           "Links": [sileniumContainerName + ':silenium']
         };
 
-        log.info('Starting %s with Silenium add-on', CIBuildContainerName);
+        log.info('Starting %s with Selenium add-on', CIBuildContainerName);
       }
       else {
         log.info('Starting %s', CIBuildContainerName);
@@ -454,7 +454,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSilenium) {
   var returnOutput = '';
 
   // Start a promise chain.
-  return runSilenium()
+  return runSelenium()
     .then(runCIBuild)
     .then(function(result) {
       // Save log output in global variable.
