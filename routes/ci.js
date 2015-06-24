@@ -95,8 +95,8 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
       if (!shoovConfig) {
         throw new Error('.shoov.yml is empty');
       }
-      
-      // Determine the need in silenium container.
+
+      // Determine the need in selenium container.
       var withSelenium = (shoovConfig.addons && shoovConfig.addons.indexOf('selenium') > -1) || false;
 
       // Execute containers.
@@ -220,7 +220,7 @@ var getShoovConfig = function(userName, repositoryName, branchName, accessToken)
  * @param accessToken
  *  Access token of user creator of CI Build.
  * @param withSelenium
- *  Determine the need execute the chain with silenium or not.
+ *  Determine the need execute the chain with selenium or not.
  *
  * @returns {Promise}
  */
@@ -231,7 +231,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   var containers = [];
   // Generate unique name for containers.
   var CIBuildContainerName = 'ci-build-' + buildItemId;
-  var sileniumContainerName = 'silenium-' + buildItemId;
+  var seleniumContainerName = 'selenium-' + buildItemId;
   // Determine a VNC password.
   var vncPassword = process.env.VNC_PASSOWRD || 'hola';
   var timeoutLimit = process.env.DOCKER_STARTUP_TIMEOUT || 30;
@@ -254,7 +254,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
       // Determine if the container is ready, and can accept connections.
       var containerReady = false;
 
-      log.info('Starting %s', sileniumContainerName);
+      log.info('Starting %s', seleniumContainerName);
 
       // Create Selenium container.
       docker.createContainer({
@@ -265,39 +265,39 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           'VNC_PASSWORD=' + vncPassword,
           'WITH_GUACAMOLE=false'
         ],
-        'name': sileniumContainerName
+        'name': seleniumContainerName
       }, function(err, container) {
         if (err) {
-          log.error('Can\'t create the container %s', sileniumContainerName);
+          log.error('Can\'t create the container %s', seleniumContainerName);
           return reject(err);
         }
         // Attach to container.
         container.attach({logs: true, stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) {
-            log.error('Can\'t attach to the container %s', sileniumContainerName);
+            log.error('Can\'t attach to the container %s', seleniumContainerName);
             return reject(err);
           }
           // Save container in containers variable.
           containers.push(container);
 
-          log.debug('%s container ID is %s', sileniumContainerName, container.id);
+          log.debug('%s container ID is %s', seleniumContainerName, container.id);
 
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              log.error("Can't start the container %s", sileniumContainerName);
+              log.error("Can't start the container %s", seleniumContainerName);
               return reject(err);
             }
-            // Set timeout for the time for which the silenium server should start.
+            // Set timeout for the time for which the selenium server should start.
             setTimeout(function() {
               if (!containerReady) {
-                var errMsg = util.format('%s couldn\'t start, and have timed out after %d seconds', sileniumContainerName, timeoutLimit);
+                var errMsg = util.format('%s couldn\'t start, and have timed out after %d seconds', seleniumContainerName, timeoutLimit);
                 return reject(errMsg);
               }
             }, timeoutLimit * 1000);
             // Set timeout for the maximum uptime.
             setTimeout(function() {
-              var errObj = new Error(util.format('%s execution has timed out after %d minutes', sileniumContainerName, uptimeLimit / 60));
+              var errObj = new Error(util.format('%s execution has timed out after %d minutes', seleniumContainerName, uptimeLimit / 60));
               return reject(errObj);
             }, uptimeLimit * 1000);
           });
@@ -307,7 +307,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             var string = chunk.toString();
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
-              log.info('Container %s is ready.', sileniumContainerName);
+              log.info('Container %s is ready.', seleniumContainerName);
               return resolve(true);
             }
           });
@@ -343,11 +343,11 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
         'name': CIBuildContainerName
       };
 
-      // If shoov configuration contain silenium add-on and silenium container successfully
+      // If shoov configuration contain selenium add-on and selenium container successfully
       // started then link CI Build container with Selenium container.
-      if (withSelenium && sileniumContainerName) {
+      if (withSelenium && seleniumContainerName) {
         containerOptions.HostConfig = {
-          "Links": [sileniumContainerName + ':silenium']
+          "Links": [seleniumContainerName + ':selenium']
         };
 
         log.info('Starting %s with Selenium add-on', CIBuildContainerName);
