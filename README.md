@@ -8,12 +8,15 @@
 Install all node dependencies:
 
 ```bash
+# Install pm2
+$ npm install pm2 -g
+
 # Install packages
 $ npm install
 
 # Pull docker containers
-docker pull amitaibu/php-ci
-docker pull elgalu/selenium:v2.46.0-base1
+$ docker pull amitaibu/php-ci
+$ docker pull elgalu/selenium:v2.46.0-base1
 ```
 
 ## Execute
