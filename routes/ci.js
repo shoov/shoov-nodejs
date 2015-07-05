@@ -331,7 +331,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
       // Predefine container options.
       var containerOptions = {
-        'Image': 'amitaibu/php-ci',
+        'Image': 'amitaibu/php-ci:0.0.1',
         'Env': [
           'BACKEND_URL=' + backendUrl
         ],
