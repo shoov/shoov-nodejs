@@ -5,6 +5,7 @@
 
   "LOGGLY_TOKEN": "704620e7-c3d4-4d84-a0c1-926e5147592c",
   "LOGGLY_SUBDOMAIN": "gizra",
+  "LOGGLY_UUID": "nodejs-dev",
 
   "VNC_PASSOWRD": "hola",
 

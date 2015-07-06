@@ -7,7 +7,7 @@ var ansi2html = require('ansi2html');
 var util = require('util');
 var yaml = require('js-yaml');
 
-module.exports = function(config) {
+module.exports = function(config, logger) {
 
   // Make config global.
   gconf = config;
@@ -15,32 +15,6 @@ module.exports = function(config) {
   var debug = gconf.get('debug');
   var backendUrl = gconf.get('backend_url');
 
-  // Setup log system.
-  var winston = require('winston');
-  require('winston-loggly');
-
-  var winstonTransports = {
-    transports: [
-      new(winston.transports.Console)({
-        colorize: 'all',
-        timestamp: true,
-        level: (debug) ? 'debug' : 'info'
-      })
-    ]
-  };
-
-  if (gconf.get('LOGGLY_TOKEN') && gconf.get('LOGGLY_SUBDOMAIN')) {
-    winstonTransports.transports.push(
-      new(winston.transports.Loggly)({
-        inputToken: gconf.get('LOGGLY_TOKEN'),
-        subdomain: gconf.get('LOGGLY_SUBDOMAIN'),
-        tags: ['shoov-nodejs'],
-        json: true
-      })
-    );
-  }
-
-  var logger = new(winston.Logger)(winstonTransports);
   // Make logger global.
   log = logger;
 
