@@ -5,123 +5,267 @@ var request = require('request-promise');
 var Docker = require('dockerode');
 var ansi2html = require('ansi2html');
 var util = require('util');
+var yaml = require('js-yaml');
 
-var debug = process.env.DEBUG || false;
+module.exports = function(config) {
 
-// Setup log system.
-var winston = require('winston');
-require('winston-loggly');
+  // Make config global.
+  gconf = config;
 
-var winstonTransports = {
-  transports: [
-    new(winston.transports.Console)({
-      colorize: 'all',
-      timestamp: true,
-      level: (debug) ? 'debug' : 'info'
-    })
-  ]
+  var debug = gconf.get('debug');
+  var backendUrl = gconf.get('backend_url');
+
+  // Setup log system.
+  var winston = require('winston');
+  require('winston-loggly');
+
+  var winstonTransports = {
+    transports: [
+      new(winston.transports.Console)({
+        colorize: 'all',
+        timestamp: true,
+        level: (debug) ? 'debug' : 'info'
+      })
+    ]
+  };
+
+  if (gconf.get('LOGGLY_TOKEN') && gconf.get('LOGGLY_SUBDOMAIN')) {
+    winstonTransports.transports.push(
+      new(winston.transports.Loggly)({
+        inputToken: gconf.get('LOGGLY_TOKEN'),
+        subdomain: gconf.get('LOGGLY_SUBDOMAIN'),
+        tags: ['shoov-nodejs'],
+        json: true
+      })
+    );
+  }
+
+  var logger = new(winston.Logger)(winstonTransports);
+  // Make logger global.
+  log = logger;
+
+  // Invoke a PR.
+  router.get('/:buildItemId/:accessToken', function(req, res, next) {
+    var buildItemId = req.params.buildItemId;
+    var accessToken = req.params.accessToken;
+
+    log.info('Request received for CI Build Item ID %d', buildItemId);
+
+    var options = {
+      url: backendUrl + '/api/ci-build-items/' + buildItemId,
+      method: 'PATCH',
+      qs: {
+        access_token: accessToken
+      },
+      form: {
+        status: 'in_progress'
+      }
+    };
+
+    var ciBuildItem;
+    var userDetail;
+    var buildDetail;
+
+    // Set the build status to "in progress" and receive CI Build Item data.
+    request(options)
+      .then(function(response) {
+        ciBuildItem = JSON.parse(response).data[0];
+        return getUser(accessToken);
+      })
+      // Get user data assigned with CI Build Item.
+      .then(function(response) {
+        userDetail = JSON.parse(response).data[0];
+        return getBuild(ciBuildItem.build, accessToken);
+      })
+      // Get the repository name from the CI Build.
+      .then(function(response) {
+        buildDetail = JSON.parse(response).data[0];
+        var userName = buildDetail.label.split('/')[0];
+        var repositoryName = buildDetail.label.split('/')[1];
+        return getShoovConfig(userName, repositoryName, buildDetail.git_branch, userDetail.github_access_token);
+      })
+      // Get Shoov configuration file from repository.
+      .then(function(response) {
+        if (!response) {
+          throw new Error("Can't get .shoov.yml");
+        }
+
+        try {
+          var data = JSON.parse(response);
+          var contentDecoded = new Buffer(data.content, 'base64').toString('utf8');
+          var shoovConfig = yaml.safeLoad(contentDecoded);
+        }
+        catch (e) {
+          throw new Error('Invalid .shoov.yml: ' + err.message);
+        }
+
+        if (!shoovConfig) {
+          throw new Error('.shoov.yml is empty');
+        }
+
+        // Determine the need in selenium container.
+        var withSelenium = (shoovConfig.addons && shoovConfig.addons.indexOf('selenium') > -1) || false;
+
+        // Execute containers.
+        return execDocker(ciBuildItem.build, buildItemId, accessToken, withSelenium);
+      })
+      .then(function(response) {
+        // Convert ANSI colors to HTML.
+        if (!response || !response.log) {
+          throw new Error('Invalid response from Docker');
+        }
+        options.form.log = ansi2html(response.log);
+        // Set the build status to "done" or "error" by the exit code.
+        options.form.status = !response.exitCode ? 'done' : 'error';
+        return request(options);
+      })
+      .then(function(response) {
+        var json = JSON.parse(response);
+        if (json.data) {
+          log.info('Build Item ID %d has finished and data uploaded to backend.', buildItemId);
+        }
+        else {
+          log.error('Response from backend is invalid.', { response: response });
+        }
+      })
+      .catch(function(err) {
+        log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
+      });
+
+    res.json( { message: 'Request accepted' } );
+  });
+
+  return router;
 };
 
-if (process.env.LOGGLY_TOKEN && process.env.LOGGLY_SUBDOMAIN) {
-  winstonTransports.transports.push(
-    new(winston.transports.Loggly)({
-      inputToken: process.env.LOGGLY_TOKEN,
-      subdomain: process.env.LOGGLY_SUBDOMAIN,
-      tags: ['shoov-nodejs'],
-      json: true
-    })
-  );
-}
-
-var log = new(winston.Logger)(winstonTransports);
-
-// Invoke a PR.
-router.get('/:buildItemId/:accessToken', function(req, res, next) {
-  var buildItemId = req.params.buildItemId;
-  var accessToken = req.params.accessToken;
-
-  log.info('Request received for CI Build Item ID %d', buildItemId);
-
+/**
+ * Receive a user data for specific REST token.
+ *
+ * @param accessToken
+ *  Drupal restful private user token
+ *
+ * @returns {Promise}
+ *  HTTP Response in promise wrapper.
+ */
+var getUser = function(accessToken) {
   var options = {
-    url: process.env.BACKEND_URL + '/api/ci-build-items/' + buildItemId,
-    method: 'PATCH',
+    url: gconf.get('backend_url') + '/api/me/',
     qs: {
-      access_token: accessToken
-    },
-    form: {
-      status: 'in_progress'
+      access_token: accessToken,
+      fields: 'id,label,github_access_token',
+      github_access_token: true
     }
   };
 
-  // Set the build status to "in progress".
-  request(options)
-    .then(function(response) {
-      var data = JSON.parse(response).data[0];
-      return execDocker(data.build, buildItemId, accessToken);
-    })
-    .then(function(response) {
-      // Convert ANSI colors to HTML.
-      if (!response || !response.log) {
-        throw new Error('Invalid response from Docker');
-      }
-      options.form.log = ansi2html(response.log);
-      // Set the build status to "done" or "error" by the exit code.
-      options.form.status = !response.exitCode ? 'done' : 'error';
-      return request(options);
-    })
-    .then(function(response) {
-      var json = JSON.parse(response);
-      if (json.data) {
-        log.info('Build Item ID %d has finished and data uploaded to backend.', buildItemId);
-      }
-      else {
-        log.error('Response from backend is invalid.', { response: response });
-      }
+  return request(options);
+};
+
+/**
+ * Get CI Build data.
+ *
+ * @param buildId
+ *  The build ID.
+ * @param accessToken
+ *  Drupal restful private user token
+ *
+ * @returns {Promise}
+ *  HTTP Response in promise wrapper.
+ */
+var getBuild = function(buildId, accessToken) {
+  var options = {
+    url: gconf.get('backend_url') + '/api/ci-builds/' + buildId,
+    qs: {
+      access_token: accessToken,
+      fields: 'id,label,git_branch,repository,private_key'
+    }
+  };
+
+  return request(options);
+};
+
+/**
+ * Get shoov configuration file from user repository.
+ *
+ * @param userName
+ *  The owner username of repository.
+ * @param repositoryName
+ *  The repository name.
+ * @param accessToken
+ *  Drupal restful private user token
+ *
+ * @returns {Promise}
+ *  HTTP response in promise wrapper.
+ */
+var getShoovConfig = function(userName, repositoryName, branchName, accessToken) {
+  var options = {
+    'url': 'https://api.github.com/repos/' + userName + '/' + repositoryName + '/contents/.shoov.yml?ref=' + branchName,
+    'headers': {
+      'Authorization': 'token ' + accessToken,
+      'User-Agent': 'Shoov.io'
+    }
+  };
+
+  return request(options)
+    .then(function(result) {
+      return result;
     })
     .catch(function(err) {
-      log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
+      if (err.statusCode == 404) {
+        log.error('.shoov.yml not exist in repository %s/%s', userName, repositoryName);
+      }
+      else {
+        log.error("Can't get .shoov.yml in %s/%s", userName, repositoryName, { errMessage: err.message } );
+      }
     });
-
-  res.json( { message: 'Request accepted' } );
-});
+};
 
 /**
  * Execute all dockers containers.
  *
  * @param buildId
- *  ID of CI Build on the backend.
+ *  The ID of CI Build on the backend.
+ * @param buildItemId
+ *  The ID of CI Build Item on the backend.
  * @param accessToken
  *  Access token of user creator of CI Build.
+ * @param withSelenium
+ *  Determine the need execute the chain with selenium or not.
  *
  * @returns {Promise}
  */
-var execDocker = function(buildId, buildItemId, accessToken) {
+var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   // Init a docker object.
   var docker = new Docker();
   // All running containers.
   var containers = [];
   // Generate unique name for containers.
   var CIBuildContainerName = 'ci-build-' + buildItemId;
-  var sileniumContainerName = 'silenium-' + buildItemId;
+  var seleniumContainerName = 'selenium-' + buildItemId;
   // Determine a VNC password.
-  var vncPassword = process.env.VNC_PASSOWRD || 'hola';
-  var timeoutLimit = process.env.DOCKER_STARTUP_TIMEOUT || 30;
-  var uptimeLimit = process.env.DOCKER_RUN_TIMEOUT || 1200;
+  var vncPassword = gconf.get('VNC_PASSOWRD');
+  var timeoutLimit = gconf.get('DOCKER_STARTUP_TIMEOUT');
+  var uptimeLimit = gconf.get('DOCKER_RUN_TIMEOUT');
   // Indicate if containers were already processed for remove.
   var removedContainers = false;
 
   /**
-   * Creates and starts Silenium container.
+   * Creates and starts Selenium container.
    *
    * @returns {Promise}
    */
-  var runSilenium = function() {
-    log.info('Start %s', sileniumContainerName);
-
+  var runSelenium = function() {
     return new Promise(function(resolve, reject) {
+      // Skip creating Selenium container because user configuration doesn't support this step.
+      if (!withSelenium) {
+        return resolve(true);
+      }
+
       // Determine if the container is ready, and can accept connections.
       var containerReady = false;
 
+      log.info('Starting %s', seleniumContainerName);
+
+      // Create Selenium container.
       docker.createContainer({
         'Image': 'elgalu/selenium:v2.46.0-base1',
         'Env': [
@@ -130,39 +274,39 @@ var execDocker = function(buildId, buildItemId, accessToken) {
           'VNC_PASSWORD=' + vncPassword,
           'WITH_GUACAMOLE=false'
         ],
-        'name': sileniumContainerName
+        'name': seleniumContainerName
       }, function(err, container) {
         if (err) {
-          log.error('Can\'t create the container %s', sileniumContainerName);
+          log.error('Can\'t create the container %s', seleniumContainerName);
           return reject(err);
         }
         // Attach to container.
         container.attach({logs: true, stream: true, stdout: true, stderr: true}, function(err, stream) {
           if (err) {
-            log.error('Can\'t attach to the container %s', sileniumContainerName);
+            log.error('Can\'t attach to the container %s', seleniumContainerName);
             return reject(err);
           }
           // Save container in containers variable.
           containers.push(container);
 
-          log.debug('%s container ID is %s', sileniumContainerName, container.id);
+          log.debug('%s container ID is %s', seleniumContainerName, container.id);
 
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              log.error("Can't start the container %s", sileniumContainerName);
+              log.error("Can't start the container %s", seleniumContainerName);
               return reject(err);
             }
-            // Set timeout for the time for which the silenium server should start.
+            // Set timeout for the time for which the selenium server should start.
             setTimeout(function() {
               if (!containerReady) {
-                var errMsg = util.format('%s couldn\'t start, and have timed out after %d seconds', sileniumContainerName, timeoutLimit);
+                var errMsg = util.format('%s couldn\'t start, and have timed out after %d seconds', seleniumContainerName, timeoutLimit);
                 return reject(errMsg);
               }
             }, timeoutLimit * 1000);
             // Set timeout for the maximum uptime.
             setTimeout(function() {
-              var errObj = new Error(util.format('%s execution has timed out after %d minutes', sileniumContainerName, uptimeLimit / 60));
+              var errObj = new Error(util.format('%s execution has timed out after %d minutes', seleniumContainerName, uptimeLimit / 60));
               return reject(errObj);
             }, uptimeLimit * 1000);
           });
@@ -172,7 +316,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
             var string = chunk.toString();
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
-              log.info('Container %s is ready.', sileniumContainerName);
+              log.info('Container %s is ready.', seleniumContainerName);
               return resolve(true);
             }
           });
@@ -187,8 +331,6 @@ var execDocker = function(buildId, buildItemId, accessToken) {
    * @returns {Promise}
    */
   var runCIBuild = function() {
-    log.info('Start %s', CIBuildContainerName);
-
     return new Promise(function(resolve, reject) {
       // Result for save all output logs and exit code.
       var result = {
@@ -196,21 +338,35 @@ var execDocker = function(buildId, buildItemId, accessToken) {
         exitCode: 0
       };
 
-      docker.createContainer({
+      // Predefine container options.
+      var containerOptions = {
         'Image': 'amitaibu/php-ci',
         'Env': [
-          'BACKEND_URL=' + process.env.BACKEND_URL
+          'BACKEND_URL=' + gconf.get('backend_url')
         ],
         'Cmd': [
           '/home/shoov/main.sh',
           buildId,
           accessToken
         ],
-        'HostConfig': {
-          "Links": [sileniumContainerName + ':silenium']
-        },
         'name': CIBuildContainerName
-      }, function(err, container) {
+      };
+
+      // If shoov configuration contain selenium add-on and selenium container successfully
+      // started then link CI Build container with Selenium container.
+      if (withSelenium && seleniumContainerName) {
+        containerOptions.HostConfig = {
+          "Links": [seleniumContainerName + ':selenium']
+        };
+
+        log.info('Starting %s with Selenium add-on', CIBuildContainerName);
+      }
+      else {
+        log.info('Starting %s', CIBuildContainerName);
+      }
+
+      // Create CI Build container.
+      docker.createContainer(containerOptions, function(err, container) {
         if (err) {
           log.error('Can\'t create the container %s', CIBuildContainerName);
           return reject(err);
@@ -307,7 +463,7 @@ var execDocker = function(buildId, buildItemId, accessToken) {
   var returnOutput = '';
 
   // Start a promise chain.
-  return runSilenium()
+  return runSelenium()
     .then(runCIBuild)
     .then(function(result) {
       // Save log output in global variable.
@@ -329,5 +485,3 @@ var execDocker = function(buildId, buildItemId, accessToken) {
     });
 
 };
-
-module.exports = router;
