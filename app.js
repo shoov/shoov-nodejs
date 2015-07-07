@@ -27,7 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Routers
 
 app.use('/', require('./routes/index'));
-app.use('/create_pr', require('./routes/create_pr')(config));
+app.use('/create_pr', require('./routes/create_pr')(config, logger));
 app.use('/ci', require('./routes/ci')(config, logger));
 app.use('/encrypt', require('./routes/encrypt'));
 

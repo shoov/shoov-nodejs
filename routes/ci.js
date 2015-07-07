@@ -8,17 +8,17 @@ var util = require('util');
 var yaml = require('js-yaml');
 
 var debug = false;
+var conf = {};
+var log = {};
 
 module.exports = function(config, logger) {
 
-  // Make config global.
-  gconf = config;
-
-  debug = gconf.get('debug');
-  var backendUrl = gconf.get('backend_url');
-
-  // Make logger global.
+  // Make config, logger and debug global.
+  conf = config;
   log = logger;
+  debug = conf.get('debug');
+
+  var backendUrl = conf.get('backend_url');
 
   // Invoke a PR.
   router.get('/:buildItemId/:accessToken', function(req, res, next) {
@@ -125,7 +125,7 @@ module.exports = function(config, logger) {
  */
 var getUser = function(accessToken) {
   var options = {
-    url: gconf.get('backend_url') + '/api/me/',
+    url: conf.get('backend_url') + '/api/me/',
     qs: {
       access_token: accessToken,
       fields: 'id,label,github_access_token',
@@ -149,7 +149,7 @@ var getUser = function(accessToken) {
  */
 var getBuild = function(buildId, accessToken) {
   var options = {
-    url: gconf.get('backend_url') + '/api/ci-builds/' + buildId,
+    url: conf.get('backend_url') + '/api/ci-builds/' + buildId,
     qs: {
       access_token: accessToken,
       fields: 'id,label,git_branch,repository,private_key'
@@ -218,9 +218,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   var CIBuildContainerName = 'ci-build-' + buildItemId;
   var seleniumContainerName = 'selenium-' + buildItemId;
   // Determine a VNC password.
-  var vncPassword = gconf.get('VNC_PASSOWRD');
-  var timeoutLimit = gconf.get('DOCKER_STARTUP_TIMEOUT');
-  var uptimeLimit = gconf.get('DOCKER_RUN_TIMEOUT');
+  var vncPassword = conf.get('VNC_PASSOWRD');
+  var timeoutLimit = conf.get('DOCKER_STARTUP_TIMEOUT');
+  var uptimeLimit = conf.get('DOCKER_RUN_TIMEOUT');
   // Indicate if containers were already processed for remove.
   var removedContainers = false;
 
@@ -316,9 +316,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
       // Predefine container options.
       var containerOptions = {
-        'Image': 'amitaibu/php-ci:0.0.1',
+        'Image': 'shoov/php-ci',
         'Env': [
-          'BACKEND_URL=' + gconf.get('backend_url')
+          'BACKEND_URL=' + conf.get('backend_url')
         ],
         'Cmd': [
           '/home/shoov/main.sh',
@@ -329,7 +329,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
       };
 
       if (debug) {
-        log.debug('backendUrl: ' + gconf.get('backend_url'));
+        log.debug('backendUrl: ' + conf.get('backend_url'));
         log.debug('buildId: ' + buildId);
         log.debug('accessToken: ' + accessToken);
       }

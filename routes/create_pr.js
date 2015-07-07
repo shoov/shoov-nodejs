@@ -4,10 +4,16 @@ var Promise = require('bluebird');
 var request = require('request-promise');
 var Docker = require('dockerode');
 
-module.exports = function(config) {
+var debug = false;
+var conf = {};
+var log = {};
 
-  // Make config global.
-  gconf = config;
+module.exports = function(config, logger) {
+
+  // Make config, logger and debug global.
+  conf = config;
+  log = logger;
+  debug = conf.get('debug');
 
   // Invoke a PR.
   router.get('/:buildId/:screenshotIds/:newBranch/:accessToken', function(req, res, next) {
@@ -15,7 +21,7 @@ module.exports = function(config) {
     var buildId = req.params.buildId;
     var accessToken = req.params.accessToken;
     var options = {
-      url: gconf.get('backend_url') + '/api/builds/' + buildId,
+      url: conf.get('backend_url') + '/api/builds/' + buildId,
       method: 'PATCH',
       qs: {
         access_token: accessToken
@@ -76,7 +82,7 @@ var execDocker = function(buildId, screenshotIds, newBranch, accessToken) {
   ];
 
   var optsc = {
-    'Env': 'BACKEND_URL=' + gconf.get('backend_url')
+    'Env': 'BACKEND_URL=' + conf.get('backend_url')
   };
 
   return new Promise(function(resolve, reject) {
