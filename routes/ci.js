@@ -7,12 +7,14 @@ var ansi2html = require('ansi2html');
 var util = require('util');
 var yaml = require('js-yaml');
 
+var debug = false;
+
 module.exports = function(config, logger) {
 
   // Make config global.
   gconf = config;
 
-  var debug = gconf.get('debug');
+  debug = gconf.get('debug');
   var backendUrl = gconf.get('backend_url');
 
   // Make logger global.
@@ -325,6 +327,12 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
         ],
         'name': CIBuildContainerName
       };
+
+      if (debug) {
+        log.debug('backendUrl: ' + gconf.get('backend_url'));
+        log.debug('buildId: ' + buildId);
+        log.debug('accessToken: ' + accessToken);
+      }
 
       // If shoov configuration contain selenium add-on and selenium container successfully
       // started then link CI Build container with Selenium container.
