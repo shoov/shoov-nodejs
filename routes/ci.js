@@ -123,6 +123,12 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
     })
     .catch(function(err) {
       log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
+      // Set status of CI build item back to queue.
+      options.form.status = 'queue';
+      return request(options);
+    })
+    .catch(function(err) {
+      log.error('Error while updating status of failed CI build item ID %d', buildItemId, { errMesage: err.message });
     });
 
   res.json( { message: 'Request accepted' } );
