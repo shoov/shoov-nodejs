@@ -106,6 +106,12 @@ module.exports = function(config, logger) {
       })
       .catch(function(err) {
         log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
+        // Set status of CI build item back to queue.
+        options.form.status = 'queue';
+        return request(options);
+      })
+      .catch(function(err) {
+        log.error('Error while updating status of failed CI build item ID %d', buildItemId, { errMesage: err.message });
       });
 
     res.json( { message: 'Request accepted' } );
@@ -418,8 +424,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
       var removedContainers = 0;
       // Some options for remove command.
       var opts = {
-        // Kill then remove the container.
-        'force': true
+        // Remove the container along with its volumes.
+        'force': true,
+        'v': true
       };
       // Start deleting every container.
       containers.forEach(function(container, index) {
