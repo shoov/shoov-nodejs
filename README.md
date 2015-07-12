@@ -33,6 +33,7 @@ Possible environments:
 * __BACKEND_URL__ - The url address of backend server. When used locally it should be the IP address and not the site alias.
 * __LOGGLY_TOKEN__ - Private token for Loggly service. 
 * __LOGGLY_SUBDOMAIN__ - Subdomain for Loggly service. 
+* __LOGGLY_UUID__ - The UUID for Loggly service. For development environment use `nodejs-dev` for production `nodejs-live`. Default set to development. _(optional)_
 * __DEBUG__ - Enable debug mode, display debug messages and safe logs for each ci build in logs. _(optional)_
 * __VNC_PASSOWRD__ - The password to connect to VNC. _(optional)_
 * __DOCKER_STARTUP_TIMEOUT__ - Determines the time in seconds which the docker may spend in starting up, and getting ready for execution. Defaults to 30 seconds.

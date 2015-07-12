@@ -36,6 +36,11 @@ if (process.env.LOGGLY_TOKEN && process.env.LOGGLY_SUBDOMAIN) {
 }
 
 var log = new(winston.Logger)(winstonTransports);
+// Add rewriter for winston, to pass uuid for each message.
+log.addRewriter(function(level, msg, meta) {
+  meta.uuid = process.env.LOGGLY_UUID || 'nodejs-dev';
+  return meta;
+});
 
 // Invoke a PR.
 router.get('/:buildItemId/:accessToken', function(req, res, next) {
