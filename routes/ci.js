@@ -435,7 +435,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
       var opts = {
         // Remove the container along with its volumes.
         'force': true,
-        'volumes': true
+        'v': true
       };
       // Start deleting every container.
       containers.forEach(function(container, index) {
