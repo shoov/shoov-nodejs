@@ -1,11 +1,11 @@
 {
   "DEBUG": false,
 
-  "BACKEND_URL": "http://192.168.1.32/shoov.local/",
+  "BACKEND_URL": "<YOUR-BACKEND-URL>",
 
-  "LOGGLY_TOKEN": "704620e7-c3d4-4d84-a0c1-926e5147592c",
-  "LOGGLY_SUBDOMAIN": "gizra",
-  "LOGGLY_UUID": "nodejs-dev",
+  "LOGGLY_TOKEN": "<YOUR-LOGGLY-TOKEN>",
+  "LOGGLY_SUBDOMAIN": "<YOUR-LOGGLY-SUBDOMAIN>",
+  "LOGGLY_UUID": "<YOUR-LOGGLY-UUID>",
 
   "VNC_PASSOWRD": "hola",
 
