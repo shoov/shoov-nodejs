@@ -322,7 +322,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
       // Predefine container options.
       var containerOptions = {
-        'Image': 'shoov/php-ci:' + conf_get('php_ci_docker_tag'),
+        'Image': 'shoov/php-ci:' + conf.get('php_ci_docker_tag'),
         'Env': [
           'BACKEND_URL=' + conf.get('backend_url')
         ],
