@@ -5,5 +5,5 @@ node_js:
   - "0.10"
 
 before_script:
-  # Make a config
-  - cp config.json.example config.json
+  # Create a config file.
+  - cp config.example.json config.json
