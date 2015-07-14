@@ -18,11 +18,13 @@
     "jade": "~1.9.2",
     "js-yaml": "3.3.1",
     "morgan": "~1.5.1",
+    "nconf": "0.7.1",
     "promised-exec": "^1.0.1",
     "request": "^2.54.0",
     "request-promise": "^0.4.1",
     "serve-favicon": "~2.2.0",
     "winston": "^1.0.0",
+    "express-winston": "^0.3.1",
     "winston-loggly": "^1.1.0"
   },
   "devDependencies": {

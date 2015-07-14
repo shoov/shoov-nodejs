@@ -7,133 +7,118 @@ var ansi2html = require('ansi2html');
 var util = require('util');
 var yaml = require('js-yaml');
 
-var debug = process.env.DEBUG || false;
-var backendUrl = process.env.BACKEND_URL;
+var debug = false;
+var conf = {};
+var log = {};
 
-// Setup log system.
-var winston = require('winston');
-require('winston-loggly');
+module.exports = function(config, logger) {
 
-var winstonTransports = {
-  transports: [
-    new(winston.transports.Console)({
-      colorize: 'all',
-      timestamp: true,
-      level: (debug) ? 'debug' : 'info'
-    })
-  ]
+  // Make config, logger and debug global.
+  conf = config;
+  log = logger;
+  debug = conf.get('debug');
+
+  var backendUrl = conf.get('backend_url');
+
+  // Invoke a PR.
+  router.get('/:buildItemId/:accessToken', function(req, res, next) {
+    var buildItemId = req.params.buildItemId;
+    var accessToken = req.params.accessToken;
+
+    log.info('Request received for CI Build Item ID %d', buildItemId);
+
+    var options = {
+      url: backendUrl + '/api/ci-build-items/' + buildItemId,
+      method: 'PATCH',
+      qs: {
+        access_token: accessToken
+      },
+      form: {
+        status: 'in_progress'
+      }
+    };
+
+    var ciBuildItem;
+    var userDetail;
+    var buildDetail;
+
+    // Set the build status to "in progress" and receive CI Build Item data.
+    request(options)
+      .then(function(response) {
+        ciBuildItem = JSON.parse(response).data[0];
+        return getUser(accessToken);
+      })
+      // Get user data assigned with CI Build Item.
+      .then(function(response) {
+        userDetail = JSON.parse(response).data[0];
+        return getBuild(ciBuildItem.build, accessToken);
+      })
+      // Get the repository name from the CI Build.
+      .then(function(response) {
+        buildDetail = JSON.parse(response).data[0];
+        var userName = buildDetail.label.split('/')[0];
+        var repositoryName = buildDetail.label.split('/')[1];
+        return getShoovConfig(userName, repositoryName, buildDetail.git_branch, userDetail.github_access_token);
+      })
+      // Get Shoov configuration file from repository.
+      .then(function(response) {
+        if (!response) {
+          throw new Error("Can't get .shoov.yml");
+        }
+
+        try {
+          var data = JSON.parse(response);
+          var contentDecoded = new Buffer(data.content, 'base64').toString('utf8');
+          var shoovConfig = yaml.safeLoad(contentDecoded);
+        }
+        catch (e) {
+          throw new Error('Invalid .shoov.yml: ' + err.message);
+        }
+
+        if (!shoovConfig) {
+          throw new Error('.shoov.yml is empty');
+        }
+
+        // Determine the need in selenium container.
+        var withSelenium = (shoovConfig.addons && shoovConfig.addons.indexOf('selenium') > -1) || false;
+
+        // Execute containers.
+        return execDocker(ciBuildItem.build, buildItemId, accessToken, withSelenium);
+      })
+      .then(function(response) {
+        // Convert ANSI colors to HTML.
+        if (!response || !response.log) {
+          throw new Error('Invalid response from Docker');
+        }
+        options.form.log = ansi2html(response.log);
+        // Set the build status to "done" or "error" by the exit code.
+        options.form.status = !response.exitCode ? 'done' : 'error';
+        return request(options);
+      })
+      .then(function(response) {
+        var json = JSON.parse(response);
+        if (json.data) {
+          log.info('Build Item ID %d has finished and data uploaded to backend.', buildItemId);
+        }
+        else {
+          log.error('Response from backend is invalid.', { response: response });
+        }
+      })
+      .catch(function(err) {
+        log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
+        // Set status of CI build item back to queue.
+        options.form.status = 'queue';
+        return request(options);
+      })
+      .catch(function(err) {
+        log.error('Error while updating status of failed CI build item ID %d', buildItemId, { errMesage: err.message });
+      });
+
+    res.json( { message: 'Request accepted' } );
+  });
+
+  return router;
 };
-
-if (process.env.LOGGLY_TOKEN && process.env.LOGGLY_SUBDOMAIN) {
-  winstonTransports.transports.push(
-    new(winston.transports.Loggly)({
-      inputToken: process.env.LOGGLY_TOKEN,
-      subdomain: process.env.LOGGLY_SUBDOMAIN,
-      tags: ['shoov-nodejs'],
-      json: true
-    })
-  );
-}
-
-var log = new(winston.Logger)(winstonTransports);
-
-// Invoke a PR.
-router.get('/:buildItemId/:accessToken', function(req, res, next) {
-  var buildItemId = req.params.buildItemId;
-  var accessToken = req.params.accessToken;
-
-  log.info('Request received for CI Build Item ID %d', buildItemId);
-
-  var options = {
-    url: backendUrl + '/api/ci-build-items/' + buildItemId,
-    method: 'PATCH',
-    qs: {
-      access_token: accessToken
-    },
-    form: {
-      status: 'in_progress'
-    }
-  };
-
-  var ciBuildItem;
-  var userDetail;
-  var buildDetail;
-
-  // Set the build status to "in progress" and receive CI Build Item data.
-  request(options)
-    .then(function(response) {
-      ciBuildItem = JSON.parse(response).data[0];
-      return getUser(accessToken);
-    })
-    // Get user data assigned with CI Build Item.
-    .then(function(response) {
-      userDetail = JSON.parse(response).data[0];
-      return getBuild(ciBuildItem.build, accessToken);
-    })
-    // Get the repository name from the CI Build.
-    .then(function(response) {
-      buildDetail = JSON.parse(response).data[0];
-      var userName = buildDetail.label.split('/')[0];
-      var repositoryName = buildDetail.label.split('/')[1];
-      return getShoovConfig(userName, repositoryName, buildDetail.git_branch, userDetail.github_access_token);
-    })
-    // Get Shoov configuration file from repository.
-    .then(function(response) {
-      if (!response) {
-        throw new Error("Can't get .shoov.yml");
-      }
-
-      try {
-        var data = JSON.parse(response);
-        var contentDecoded = new Buffer(data.content, 'base64').toString('utf8');
-        var shoovConfig = yaml.safeLoad(contentDecoded);
-      }
-      catch (e) {
-        throw new Error('Invalid .shoov.yml: ' + err.message);
-      }
-
-      if (!shoovConfig) {
-        throw new Error('.shoov.yml is empty');
-      }
-
-      // Determine the need in selenium container.
-      var withSelenium = (shoovConfig.addons && shoovConfig.addons.indexOf('selenium') > -1) || false;
-
-      // Execute containers.
-      return execDocker(ciBuildItem.build, buildItemId, accessToken, withSelenium);
-    })
-    .then(function(response) {
-      // Convert ANSI colors to HTML.
-      if (!response || !response.log) {
-        throw new Error('Invalid response from Docker');
-      }
-      options.form.log = ansi2html(response.log);
-      // Set the build status to "done" or "error" by the exit code.
-      options.form.status = !response.exitCode ? 'done' : 'error';
-      return request(options);
-    })
-    .then(function(response) {
-      var json = JSON.parse(response);
-      if (json.data) {
-        log.info('Build Item ID %d has finished and data uploaded to backend.', buildItemId);
-      }
-      else {
-        log.error('Response from backend is invalid.', { response: response });
-      }
-    })
-    .catch(function(err) {
-      log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
-      // Set status of CI build item back to queue.
-      options.form.status = 'queue';
-      return request(options);
-    })
-    .catch(function(err) {
-      log.error('Error while updating status of failed CI build item ID %d', buildItemId, { errMesage: err.message });
-    });
-
-  res.json( { message: 'Request accepted' } );
-});
-
 
 /**
  * Receive a user data for specific REST token.
@@ -146,7 +131,7 @@ router.get('/:buildItemId/:accessToken', function(req, res, next) {
  */
 var getUser = function(accessToken) {
   var options = {
-    url: backendUrl + '/api/me/',
+    url: conf.get('backend_url') + '/api/me/',
     qs: {
       access_token: accessToken,
       fields: 'id,label,github_access_token',
@@ -170,7 +155,7 @@ var getUser = function(accessToken) {
  */
 var getBuild = function(buildId, accessToken) {
   var options = {
-    url: backendUrl + '/api/ci-builds/' + buildId,
+    url: conf.get('backend_url') + '/api/ci-builds/' + buildId,
     qs: {
       access_token: accessToken,
       fields: 'id,label,git_branch,repository,private_key'
@@ -239,9 +224,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   var CIBuildContainerName = 'ci-build-' + buildItemId;
   var seleniumContainerName = 'selenium-' + buildItemId;
   // Determine a VNC password.
-  var vncPassword = process.env.VNC_PASSOWRD || 'hola';
-  var timeoutLimit = process.env.DOCKER_STARTUP_TIMEOUT || 30;
-  var uptimeLimit = process.env.DOCKER_RUN_TIMEOUT || 1200;
+  var vncPassword = conf.get('VNC_PASSOWRD');
+  var timeoutLimit = conf.get('DOCKER_STARTUP_TIMEOUT');
+  var uptimeLimit = conf.get('DOCKER_RUN_TIMEOUT');
   // Indicate if containers were already processed for remove.
   var removedContainers = false;
 
@@ -337,9 +322,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
       // Predefine container options.
       var containerOptions = {
-        'Image': 'amitaibu/php-ci:0.0.1',
+        'Image': 'shoov/php-ci',
         'Env': [
-          'BACKEND_URL=' + backendUrl
+          'BACKEND_URL=' + conf.get('backend_url')
         ],
         'Cmd': [
           '/home/shoov/main.sh',
@@ -348,6 +333,12 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
         ],
         'name': CIBuildContainerName
       };
+
+      if (debug) {
+        log.debug('backendUrl: ' + conf.get('backend_url'));
+        log.debug('buildId: ' + buildId);
+        log.debug('accessToken: ' + accessToken);
+      }
 
       // If shoov configuration contain selenium add-on and selenium container successfully
       // started then link CI Build container with Selenium container.
@@ -483,5 +474,3 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
     });
 
 };
-
-module.exports = router;
