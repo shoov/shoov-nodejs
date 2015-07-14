@@ -7,6 +7,8 @@
   "LOGGLY_SUBDOMAIN": false,
   "LOGGLY_UUID": false,
 
+  "PHP_CI_DOCKER_TAG": "v0.0.2",
+
   "VNC_PASSOWRD": "hola",
 
   "DOCKER_STARTUP_TIMEOUT": 30,
