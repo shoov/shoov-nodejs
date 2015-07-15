@@ -1,16 +1,16 @@
 {
-  "DEBUG": false,
+  "debug": false,
 
-  "BACKEND_URL": "<YOUR-BACKEND-URL>",
+  "backend_url": "<YOUR-BACKEND-URL>",
 
-  "LOGGLY_TOKEN": false,
-  "LOGGLY_SUBDOMAIN": false,
-  "LOGGLY_UUID": false,
+  "loggly_token": false,
+  "loggly_subdomain": false,
+  "loggly_uuid": false,
 
-  "PHP_CI_DOCKER_TAG": "v0.0.2",
+  "php_ci_docker_tag": "v0.0.2",
 
-  "VNC_PASSOWRD": "hola",
+  "vnc_passowrd": "hola",
 
-  "DOCKER_STARTUP_TIMEOUT": 30,
-  "DOCKER_RUN_TIMEOUT": 1200
+  "docker_startup_timeout": 30,
+  "docker_run_timeout": 1200
 }

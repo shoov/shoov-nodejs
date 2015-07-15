@@ -29,14 +29,14 @@ Environment variables have more priority then configuration.
 
 Possible properties:
 
-* __BACKEND_URL__ - The url address of backend server. When used locally it should be the IP address and not the site alias.
-* __LOGGLY_TOKEN__ - Private token for Loggly service. 
-* __LOGGLY_SUBDOMAIN__ - Subdomain for Loggly service. 
-* __LOGGLY_UUID__ - The UUID for Loggly service. For development environment use `nodejs-dev` for production `nodejs-live`. Default set to development. _(optional)_
-* __DEBUG__ - Enable debug mode, display debug messages and safe logs for each ci build in logs. _(optional)_
-* __VNC_PASSOWRD__ - The password to connect to VNC. _(optional)_
-* __DOCKER_STARTUP_TIMEOUT__ - Determines the time in seconds which the docker may spend in starting up, and getting ready for execution. Defaults to 30 seconds.
-* __DOCKER_RUN_TIMEOUT__ - Determines the time in seconds which the docker may execute the tests. Defaults to 1200 seconds (20 minutes).
+* __backend_url__ - The url address of backend server. When used locally it should be the IP address and not the site alias.
+* __loggly_token__ - Private token for Loggly service. 
+* __loggly_subdomain__ - Subdomain for Loggly service. 
+* __loggly_uuid__ - The UUID for Loggly service. For development environment use `nodejs-dev` for production `nodejs-live`. Default set to development. _(optional)_
+* __debug__ - Enable debug mode, display debug messages and safe logs for each ci build in logs. _(optional)_
+* __vnc_passowrd__ - The password to connect to VNC. _(optional)_
+* __docker_startup_timeout__ - Determines the time in seconds which the docker may spend in starting up, and getting ready for execution. Defaults to 30 seconds.
+* __docker_run_timeout__ - Determines the time in seconds which the docker may execute the tests. Defaults to 1200 seconds (20 minutes).
 
 ## Execute
 
