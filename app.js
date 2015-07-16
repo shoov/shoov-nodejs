@@ -7,6 +7,10 @@ var bodyParser = require('body-parser');
 var config = require('./lib/config')();
 var logger = require('./lib/logger')(config);
 
+var result = require('./lib/ansi2html')('some of content hehehe');
+
+console.log(result);
+
 var app = express();
 
 // Views
