@@ -249,7 +249,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
       // Create Selenium container.
       docker.createContainer({
-        'Image': 'elgalu/selenium:v2.46.0-base1',
+        'Image': conf.get('selenium_docker_image'),
         'Env': [
           'SCREEN_WIDTH=1920',
           'SCREEN_HEIGHT=1080',
@@ -322,7 +322,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
       // Predefine container options.
       var containerOptions = {
-        'Image': 'shoov/php-ci:' + conf.get('php_ci_docker_tag'),
+        'Image': conf.get('php_ci_docker_image'),
         'Env': [
           'BACKEND_URL=' + conf.get('backend_url')
         ],
