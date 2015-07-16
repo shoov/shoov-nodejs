@@ -7,9 +7,11 @@ var bodyParser = require('body-parser');
 var config = require('./lib/config')();
 var logger = require('./lib/logger')(config);
 
-var result = require('./lib/ansi2html')('some of content hehehe');
-
-console.log(result);
+var ansi2html = require('./lib/ansi2html');
+var filtered_text = ansi2html('4096 מרץ 25 10:21 [01;34mphantomjs[0m', function(result) {
+  console.log(result);
+  console.log('test');
+});
 
 var app = express();
 
