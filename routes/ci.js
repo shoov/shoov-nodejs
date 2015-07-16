@@ -6,6 +6,7 @@ var Docker = require('dockerode');
 var ansi2html = require('ansi2html');
 var util = require('util');
 var yaml = require('js-yaml');
+var ansi2html = require('../lib/ansi2html');
 
 var debug = false;
 var conf = {};
@@ -90,7 +91,12 @@ module.exports = function(config, logger) {
         if (!response || !response.log) {
           throw new Error('Invalid response from Docker');
         }
-        options.form.log = ansi2html(response.log);
+
+        ansi2html(response.log, function(result) {
+          options.form.log = result;
+          console.log(options.form.log);
+        });
+
         // Set the build status to "done" or "error" by the exit code.
         options.form.status = !response.exitCode ? 'done' : 'error';
         return request(options);
