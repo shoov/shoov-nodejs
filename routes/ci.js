@@ -224,9 +224,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   var CIBuildContainerName = 'ci-build-' + buildItemId;
   var seleniumContainerName = 'selenium-' + buildItemId;
   // Determine a VNC password.
-  var vncPassword = conf.get('VNC_PASSOWRD');
-  var timeoutLimit = conf.get('DOCKER_STARTUP_TIMEOUT');
-  var uptimeLimit = conf.get('DOCKER_RUN_TIMEOUT');
+  var vncPassword = conf.get('vnc_passowrd');
+  var timeoutLimit = conf.get('docker_startup_timeout');
+  var uptimeLimit = conf.get('docker_run_timeout');
   // Indicate if containers were already processed for remove.
   var removedContainers = false;
 
