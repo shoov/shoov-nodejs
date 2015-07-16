@@ -74,7 +74,7 @@ var execDocker = function(buildId, screenshotIds, newBranch, accessToken) {
 
   var image = 'amitaibu/shoov-pr';
   var cmd = [
-    '/home/main.sh',
+    '/home/shoov/main.sh',
     buildId,
     screenshotIds,
     newBranch,
