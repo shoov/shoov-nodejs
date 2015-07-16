@@ -7,7 +7,9 @@
   "loggly_subdomain": false,
   "loggly_uuid": false,
 
-  "php_ci_docker_tag": "v0.0.2",
+  "php_ci_docker_image": "shoov/php-ci:v0.0.2",
+  "pr_docker_image": "amitaibu/shoov-pr:latest",
+  "selenium_docker_image": "elgalu/selenium:v2.46.0-base1",
 
   "vnc_passowrd": "hola",
 

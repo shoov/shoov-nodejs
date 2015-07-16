@@ -72,7 +72,7 @@ var execDocker = function(buildId, screenshotIds, newBranch, accessToken) {
 
   var docker = new Docker();
 
-  var image = 'amitaibu/shoov-pr';
+  var image = conf.get('pr_docker_image');
   var cmd = [
     '/home/main.sh',
     buildId,
