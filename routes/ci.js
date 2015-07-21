@@ -3,10 +3,8 @@ var router = express.Router();
 var Promise = require('bluebird');
 var request = require('request-promise');
 var Docker = require('dockerode');
-var ansi2html = require('ansi2html');
 var util = require('util');
 var yaml = require('js-yaml');
-var ansi2html = require('../lib/ansi2html');
 
 var debug = false;
 var conf = {};
@@ -92,12 +90,10 @@ module.exports = function(config, logger) {
           throw new Error('Invalid response from Docker');
         }
 
-        ansi2html(response.log, function(result) {
-          options.form.log = result;
-          console.log(options.form.log);
-        });
+        var start = result.indexOf("<pre>") + 6;
+        var end = result.indexOf("</pre>") - start - 1;
 
-        // Set the build status to "done" or "error" by the exit code.
+        options.form.log = response.log.substr(start, end);
         options.form.status = !response.exitCode ? 'done' : 'error';
         return request(options);
       })
@@ -301,7 +297,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Read stream and wait until needed phrase.
           stream.on('data', function(chunk) {
             // And waiting for "Ready" string.
-            var string = chunk.toString();
+            var string = chunk.toString('utf8');
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
               log.info('Container %s is ready.', seleniumContainerName);
