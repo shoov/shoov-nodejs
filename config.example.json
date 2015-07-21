@@ -8,7 +8,7 @@
   "loggly_uuid": false,
 
   "php_ci_docker_image": "shoov/php-ci:v0.0.2",
-  "pr_docker_image": "amitaibu/shoov-pr:latest",
+  "pr_docker_image": "shoov/github-pr:v0.0.1",
   "selenium_docker_image": "elgalu/selenium:v2.46.0-base1",
 
   "vnc_passowrd": "hola",
