@@ -29,7 +29,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', require('./routes/index'));
 app.use('/create_pr', require('./routes/create_pr')(config, logger));
 app.use('/ci', require('./routes/ci')(config, logger));
-app.use('/encrypt', require('./routes/encrypt'));
+app.use('/encrypt', require('./routes/encrypt')(config, logger));
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
