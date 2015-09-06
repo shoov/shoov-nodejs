@@ -221,8 +221,8 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   // All running containers.
   var containers = [];
   // Generate unique name for containers.
-  var CIBuildContainerName = 'ci-build-' + buildItemId;
-  var seleniumContainerName = 'selenium-' + buildItemId;
+  var CIBuildContainerName = 'ci-build-' + buildItemId + '-' + Date.now();
+  var seleniumContainerName = 'selenium-' + buildItemId  + '-' + Date.now();
   // Determine a VNC password.
   var vncPassword = conf.get('vnc_passowrd');
   var timeoutLimit = conf.get('docker_startup_timeout');
@@ -276,8 +276,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              log.error("Can't start the container %s", seleniumContainerName);
-              return reject(err);
+              var errMsg = util.format("Can't start the container %s. Error = %s", seleniumContainerName, err);
+              log.error(errMsg);
+              return reject(errMsg);
             }
             // Set timeout for the time for which the selenium server should start.
             setTimeout(function() {
