@@ -11,6 +11,18 @@ var debug = false;
 var conf = {};
 var log = {};
 
+/**
+ * Implements custom Error type "FileNotFoundError". Extends Error.
+ *
+ * @param message
+ *  Error message
+ */
+function FileNotFoundError(message) {
+  this.name = "FileNotFoundError";
+  this.message = (message || "");
+}
+FileNotFoundError.prototype = Error.prototype;
+
 module.exports = function(config, logger) {
 
   // Make config, logger and debug global.
@@ -64,7 +76,7 @@ module.exports = function(config, logger) {
       .then(function(response) {
         if (!response) {
           // Send other type of an error if file doesn't exist at all.
-          throw new ReferenceError("Can't get .shoov.yml");
+          throw new FileNotFoundError("Can't get .shoov.yml");
         }
 
         try {
@@ -109,7 +121,7 @@ module.exports = function(config, logger) {
         log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
         // Set status of CI build item to error if .shoov.yml file doesn't exist
         // or back to queue.
-        options.form.status = err.name == 'ReferenceError' ? 'error' : 'queue';
+        options.form.status = err.name == 'FileNotFoundError' ? 'error' : 'queue';
         return request(options);
       })
       .catch(function(err) {
