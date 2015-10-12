@@ -63,6 +63,7 @@ module.exports = function(config, logger) {
       // Get Shoov configuration file from repository.
       .then(function(response) {
         if (!response) {
+          // Send other type of an error if file doesn't exist at all.
           throw new ReferenceError("Can't get .shoov.yml");
         }
 
@@ -106,8 +107,8 @@ module.exports = function(config, logger) {
       })
       .catch(function(err) {
         log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
-        // Set status of CI build item back to error if .shoov.yml doesn't
-        // exist or back to queue.
+        // Set status of CI build item to error if .shoov.yml file doesn't exist
+        // or back to queue.
         options.form.status = err.name == 'ReferenceError' ? 'error' : 'queue';
         return request(options);
       })
