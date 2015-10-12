@@ -63,7 +63,7 @@ module.exports = function(config, logger) {
       // Get Shoov configuration file from repository.
       .then(function(response) {
         if (!response) {
-          throw new Error("Can't get .shoov.yml");
+          throw new ReferenceError("Can't get .shoov.yml");
         }
 
         try {
@@ -107,7 +107,7 @@ module.exports = function(config, logger) {
       .catch(function(err) {
         log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
         // Set status of CI build item back to queue.
-        options.form.status = 'queue';
+        options.form.status = err.name == 'ReferenceError' ? 'error' : 'queue';
         return request(options);
       })
       .catch(function(err) {
