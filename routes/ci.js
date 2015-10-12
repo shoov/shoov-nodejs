@@ -12,7 +12,9 @@ var conf = {};
 var log = {};
 
 /**
- * Implements custom Error type "FileNotFoundError". Extends Error.
+ * Implements custom error type "FileNotFoundError".
+ * Extends Error object and indicates an error regarding the .shoov.yml file
+ * is missing.
  *
  * @param message
  *  Error message
