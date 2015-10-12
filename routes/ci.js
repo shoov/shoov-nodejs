@@ -106,7 +106,8 @@ module.exports = function(config, logger) {
       })
       .catch(function(err) {
         log.error('Error while processing CI Build Item ID %d', buildItemId, { errMesage: err.message });
-        // Set status of CI build item back to queue.
+        // Set status of CI build item back to error if .shoov.yml doesn't
+        // exist or back to queue.
         options.form.status = err.name == 'ReferenceError' ? 'error' : 'queue';
         return request(options);
       })
