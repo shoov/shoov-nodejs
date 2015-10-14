@@ -13,6 +13,7 @@ var log = {};
 
 /**
  * Implements custom error type "FileNotFoundError".
+ *
  * Extends Error object and indicates an error regarding the .shoov.yml file
  * is missing.
  *
@@ -20,7 +21,7 @@ var log = {};
  *  Error message
  */
 function FileNotFoundError(message) {
-  this.name = "FileNotFoundError";
+  this.name = 'FileNotFoundError';
   this.message = (message || "");
 }
 FileNotFoundError.prototype = Error.prototype;
