@@ -411,7 +411,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           });
 
           // Waits for a container to end.
-          container.wait(function(err, data) {
+          var waitContainer = container.wait(function(err, data) {
             if (err) {
               log.error('Error while the container %s is finished.', CIBuildContainerName);
               return reject(err);
@@ -432,6 +432,11 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             result.exitCode = data.StatusCode;
             return resolve(result);
           });
+
+          setTimeout(function () {
+            waitContainer();
+          }, 5000);
+
         });
       });
     });
