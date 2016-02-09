@@ -288,7 +288,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Save container in containers variable.
           containers.push(container);
 
-          log.debug('%s container ID is %s', seleniumContainerName, container.id);
+          log.info('%s selenium container ID is %s', seleniumContainerName, container.id);
 
           // Start a new created container.
           container.start(function(err) {
@@ -314,6 +314,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           stream.on('data', function(chunk) {
             // And waiting for "Ready" string.
             var string = chunk.toString();
+            log.info(string);
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
               log.info('Container %s is ready.', seleniumContainerName);
@@ -386,11 +387,13 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Save container in containers variable.
           containers.push(container);
 
-          log.debug('%s container ID is %s', CIBuildContainerName, container.id);
+          log.info('%s container ID is %s', CIBuildContainerName, container.id);
 
           // Read a stream.
           stream.on('data', function(chunk) {
             // Get the data from the terminal.
+            var string = chunk.toString();
+            log.info(string);
             result.log += chunk;
           });
           // Start a new created container.
@@ -416,8 +419,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
             // TODO: Figure out why it's happened.
             if (!result.log) {
-              var errMsg = util.format('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
-              return reject(new Error(errMsg));
+              log.error('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
+              // @todo: We used to reject here, but it caused many false
+              // positives.
             }
 
             // Get the exit code.
@@ -454,7 +458,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             return reject(err);
           }
 
-          log.debug('The container %s removed', container.id);
+          log.info('The container %s removed', container.id);
 
           removedContainers++;
           // If all containers are removed we can return.
