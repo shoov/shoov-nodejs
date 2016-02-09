@@ -420,11 +420,16 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
             log.info(result);
 
-            if (!!result && !!result.log) {
-              // Get the exit code.
-              result.exitCode = data.StatusCode;
-              resolve(result);
+            if (!result.log) {
+              var errMsg = ('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
+              log.error(errMsg);
+              log.error(result);
+              return reject(errMsg);
             }
+
+            // Get the exit code.
+            result.exitCode = data.StatusCode;
+            resolve(result);
           });
         });
       });
