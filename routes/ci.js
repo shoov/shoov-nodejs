@@ -392,14 +392,13 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Read a stream.
           stream.on('data', function(chunk) {
             // Get the data from the terminal.
-            var string = chunk.toString();
-            log.info(string);
+            log.info(chunk);
             result.log += chunk;
           });
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              log.error('Can\'t start the container %s, error: %s', CIBuildContainerName, err);
+              log.error("Can't start the container %s, error: %s", CIBuildContainerName, err);
               return reject(err);
             }
             // Set timeout for the maximum uptime.
