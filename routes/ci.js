@@ -311,13 +311,15 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             }, uptimeLimit * 1000);
           });
           // Read stream and wait until needed phrase.
+          log.info('Waiting for selenium container %s.', seleniumContainerName);
+          
           stream.on('data', function(chunk) {
             // And waiting for "Ready" string.
             var string = chunk.toString();
             log.info(string);
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
-              log.info('Container %s is ready.', seleniumContainerName);
+              log.info('Selenium container %s is ready.', seleniumContainerName);
               return resolve(true);
             }
           });
