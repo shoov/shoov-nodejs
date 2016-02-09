@@ -312,7 +312,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           });
           // Read stream and wait until needed phrase.
           log.info('Waiting for selenium container %s.', seleniumContainerName);
-          
+
           stream.on('data', function(chunk) {
             // And waiting for "Ready" string.
             var string = chunk.toString();
@@ -474,9 +474,15 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   // Helper variable to get the CI container logs.
   var returnOutput = '';
 
+
   // Start a promise chain.
   return runSelenium()
-    .then(runCIBuild)
+    .then(function() {
+      setTimeout(function () {
+        log.info('waiting to attach ...');
+        return runCIBuild;
+      }, 1000);
+    })
     .then(function(result) {
       // Save log output in global variable.
       returnOutput = result;
