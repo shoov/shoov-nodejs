@@ -478,8 +478,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
   // Start a promise chain.
   return runSelenium()
     .then(function(container) {
+
       container.inspect(function (err, data) {
-        log.info(data.State;);
+        log.info(data.State);
       });
 
       return runCIBuild();
