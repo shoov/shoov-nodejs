@@ -481,7 +481,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
       log.info('Going to run CI build now...');
       container.inspect(function (err, data) {
-        log.info(data.State);
+        log.info(data);
       });
 
       return runCIBuild();
