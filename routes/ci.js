@@ -394,7 +394,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Read a stream.
           stream.on('data', function(chunk) {
             // Get the data from the terminal.
-            log.info(chunk);
+            log.info(chunk.toString());
             result.log += chunk;
           });
           // Start a new created container.
