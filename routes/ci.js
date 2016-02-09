@@ -320,11 +320,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
               log.info('Selenium container %s is ready.', seleniumContainerName);
-
-              setTimeout(function () {
-                log.info('Waited a bit...');
-                return resolve(true);
-              }, 5000);
+              return resolve(true);
             }
           });
         });
