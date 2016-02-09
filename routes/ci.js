@@ -410,31 +410,31 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             }, uptimeLimit * 1000);
           });
 
-          // Waits for a container to end.
-          var waitContainer = container.wait(function(err, data) {
-            if (err) {
-              log.error('Error while the container %s is finished.', CIBuildContainerName);
-              return reject(err);
-            }
-
-            log.info('%s container is finished.', CIBuildContainerName);
-
-            log.info(result);
-
-            if (!result.log) {
-              var errMsg = ('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
-              log.error(errMsg);
-              log.error(result);
-              return reject(errMsg);
-            }
-
-            // Get the exit code.
-            result.exitCode = data.StatusCode;
-            return resolve(result);
-          });
 
           setTimeout(function () {
-            waitContainer();
+            // Waits for a container to end.
+            container.wait(function(err, data) {
+              if (err) {
+                log.error('Error while the container %s is finished.', CIBuildContainerName);
+                return reject(err);
+              }
+
+              log.info('%s container is finished.', CIBuildContainerName);
+
+              log.info(result);
+
+              if (!result.log) {
+                var errMsg = ('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
+                log.error(errMsg);
+                log.error(result);
+                return reject(errMsg);
+              }
+
+              // Get the exit code.
+              result.exitCode = data.StatusCode;
+              return resolve(result);
+            });
+
           }, 5000);
 
         });
