@@ -420,9 +420,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
             // TODO: Figure out why it's happened.
             if (!result.log) {
-              log.error('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
-              // @todo: We used to reject here, but it caused many false
-              // positives.
+              throw Error('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
             }
 
             // Get the exit code.
