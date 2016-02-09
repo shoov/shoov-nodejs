@@ -320,7 +320,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
               log.info('Selenium container %s is ready.', seleniumContainerName);
-              return resolve(true);
+              return resolve(container);
             }
           });
         });
@@ -477,7 +477,13 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
   // Start a promise chain.
   return runSelenium()
-    .then(runCIBuild)
+    .then(function(container) {
+      container.inspect(function (err, data) {
+        log.info(data.State;);
+      });
+
+      return runCIBuild();
+    })
     .then(function(result) {
       // Save log output in global variable.
       returnOutput = result;
