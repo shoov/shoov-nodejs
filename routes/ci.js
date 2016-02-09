@@ -396,7 +396,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Start a new created container.
           container.start(function(err) {
             if (err) {
-              log.error('Can\'t start the container ', CIBuildContainerName);
+              log.error('Can\'t start the container %s, error: %s', CIBuildContainerName, err);
               return reject(err);
             }
             // Set timeout for the maximum uptime.
