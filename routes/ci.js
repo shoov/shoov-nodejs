@@ -409,6 +409,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
               return reject(errObj);
             }, uptimeLimit * 1000);
           });
+
           // Waits for a container to end.
           container.wait(function(err, data) {
             if (err) {
@@ -429,7 +430,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
             // Get the exit code.
             result.exitCode = data.StatusCode;
-            resolve(result);
+            return resolve(result);
           });
         });
       });
