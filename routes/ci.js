@@ -418,6 +418,8 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
             log.info('%s container is finished.', CIBuildContainerName);
 
+            log.info(result);
+
             // TODO: Figure out why it's happened.
             if (!result.log) {
               var errMsg = ('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
