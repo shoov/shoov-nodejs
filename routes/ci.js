@@ -322,8 +322,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
               log.info('Selenium container %s is ready.', seleniumContainerName);
 
               setTimeout(function () {
+                log.info('Waited a bit...');
                 return resolve(true);
-              }, 1000);
+              }, 5000);
             }
           });
         });
