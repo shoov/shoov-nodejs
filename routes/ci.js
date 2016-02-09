@@ -288,7 +288,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Save container in containers variable.
           containers.push(container);
 
-          log.debug('%s container ID is %s', seleniumContainerName, container.id);
+          log.info('%s selenium container ID is %s', seleniumContainerName, container.id);
 
           // Start a new created container.
           container.start(function(err) {
@@ -311,12 +311,15 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             }, uptimeLimit * 1000);
           });
           // Read stream and wait until needed phrase.
+          log.info('Waiting for selenium container %s.', seleniumContainerName);
+
           stream.on('data', function(chunk) {
             // And waiting for "Ready" string.
             var string = chunk.toString();
+            log.info(string);
             if (string.indexOf('all done and ready for testing') > -1) {
               containerReady = true;
-              log.info('Container %s is ready.', seleniumContainerName);
+              log.info('Selenium container %s is ready.', seleniumContainerName);
               return resolve(true);
             }
           });
@@ -386,17 +389,18 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
           // Save container in containers variable.
           containers.push(container);
 
-          log.debug('%s container ID is %s', CIBuildContainerName, container.id);
+          log.info('%s container ID is %s', CIBuildContainerName, container.id);
 
           // Read a stream.
           stream.on('data', function(chunk) {
             // Get the data from the terminal.
+            log.info(chunk.toString());
             result.log += chunk;
           });
-          // Start a new created container.
+          // Start a new container.
           container.start(function(err) {
             if (err) {
-              log.error('Can\'t start the container ', CIBuildContainerName);
+              log.error("Can't start the container %s, error: %s", CIBuildContainerName, err);
               return reject(err);
             }
             // Set timeout for the maximum uptime.
@@ -405,25 +409,34 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
               return reject(errObj);
             }, uptimeLimit * 1000);
           });
-          // Waits for a container to end.
-          container.wait(function(err, data) {
-            if (err) {
-              log.error('Error while the container %s is finished.', CIBuildContainerName);
-              return reject(err);
-            }
 
-            log.info('%s container is finished.', CIBuildContainerName);
 
-            // TODO: Figure out why it's happened.
-            if (!result.log) {
-              var errMsg = util.format('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
-              return reject(new Error(errMsg));
-            }
+          setTimeout(function () {
+            // Waits for a container to end.
+            container.wait(function(err, data) {
+              if (err) {
+                log.error('Error while the container %s is finished.', CIBuildContainerName);
+                return reject(err);
+              }
 
-            // Get the exit code.
-            result.exitCode = data.StatusCode;
-            resolve(result);
-          });
+              log.info('%s container is finished.', CIBuildContainerName);
+
+              log.info(result);
+
+              if (!result.log) {
+                var errMsg = ('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
+                log.error(errMsg);
+                log.error(result);
+                return reject(errMsg);
+              }
+
+              // Get the exit code.
+              result.exitCode = data.StatusCode;
+              return resolve(result);
+            });
+
+          }, 5000);
+
         });
       });
     });
@@ -454,7 +467,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             return reject(err);
           }
 
-          log.debug('The container %s removed', container.id);
+          log.info('The container %s removed', container.id);
 
           removedContainers++;
           // If all containers are removed we can return.
@@ -468,6 +481,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
   // Helper variable to get the CI container logs.
   var returnOutput = '';
+
 
   // Start a promise chain.
   return runSelenium()
