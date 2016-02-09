@@ -397,7 +397,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             log.info(chunk.toString());
             result.log += chunk;
           });
-          // Start a new created container.
+          // Start a new container.
           container.start(function(err) {
             if (err) {
               log.error("Can't start the container %s, error: %s", CIBuildContainerName, err);
@@ -477,7 +477,12 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
   // Start a promise chain.
   return runSelenium()
-    .then(runCIBuild)
+    .then(function() {
+      setTimeout(function () {
+        log.info('Waiting to start build...');
+        return runCIBuild();
+      }, 3000);
+    })
     .then(function(result) {
       // Save log output in global variable.
       returnOutput = result;
