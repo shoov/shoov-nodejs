@@ -477,12 +477,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
   // Start a promise chain.
   return runSelenium()
-    .then(function() {
-      setTimeout(function () {
-        log.info('waiting to attach ...');
-        return runCIBuild;
-      }, 1000);
-    })
+    .then(runCIBuild)
     .then(function(result) {
       // Save log output in global variable.
       returnOutput = result;
