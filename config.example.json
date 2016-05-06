@@ -9,7 +9,7 @@
 
   "php_ci_docker_image": "shoov/php-ci:v0.0.2",
   "pr_docker_image": "shoov/github-pr:v0.0.1",
-  "selenium_docker_image": "elgalu/selenium:v2.46.0-base1",
+  "selenium_docker_image": "elgalu/selenium@sha256:dc7568c79355b6bde63706165b07f3c22e64e5749e12ab3591e5160776e09b1b",
 
   "vnc_passowrd": "hola",
 
