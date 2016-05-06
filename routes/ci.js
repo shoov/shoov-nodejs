@@ -374,71 +374,74 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
         log.info('Starting %s', CIBuildContainerName);
       }
 
-      // Create CI Build container.
-      docker.createContainer(containerOptions, function(err, container) {
-        if (err) {
-          log.error('Can\'t create the container %s', CIBuildContainerName);
-          return reject(err);
-        }
-        // Attach to container.
-        container.attach({logs: true, stream: true, stdout: true, stderr: true}, function(err, stream) {
+      setTimeout(function () {
+
+        // Create CI Build container.
+        docker.createContainer(containerOptions, function(err, container) {
           if (err) {
-            log.error('Can\'t attach to the container %s', CIBuildContainerName);
+            log.error('Can\'t create the container %s', CIBuildContainerName);
             return reject(err);
           }
-          // Save container in containers variable.
-          containers.push(container);
-
-          log.info('%s container ID is %s', CIBuildContainerName, container.id);
-
-          // Read a stream.
-          stream.on('data', function(chunk) {
-            // Get the data from the terminal.
-            log.info(chunk.toString());
-            result.log += chunk;
-          });
-          // Start a new container.
-          container.start(function(err) {
+          // Attach to container.
+          container.attach({logs: true, stream: true, stdout: true, stderr: true}, function(err, stream) {
             if (err) {
-              log.error("Can't start the container %s, error: %s", CIBuildContainerName, err);
+              log.error('Can\'t attach to the container %s', CIBuildContainerName);
               return reject(err);
             }
-            // Set timeout for the maximum uptime.
-            setTimeout(function() {
-              var errObj = new Error(util.format('%s execution has timed out after %d minutes', CIBuildContainerName, uptimeLimit / 60));
-              return reject(errObj);
-            }, uptimeLimit * 1000);
-          });
+            // Save container in containers variable.
+            containers.push(container);
 
+            log.info('%s container ID is %s', CIBuildContainerName, container.id);
 
-          setTimeout(function () {
-            // Waits for a container to end.
-            container.wait(function(err, data) {
+            // Read a stream.
+            stream.on('data', function(chunk) {
+              // Get the data from the terminal.
+              log.info(chunk.toString());
+              result.log += chunk;
+            });
+            // Start a new container.
+            container.start(function(err) {
               if (err) {
-                log.error('Error while the container %s is finished.', CIBuildContainerName);
+                log.error("Can't start the container %s, error: %s", CIBuildContainerName, err);
                 return reject(err);
               }
-
-              log.info('%s container is finished.', CIBuildContainerName);
-
-              log.info(result);
-
-              if (!result.log) {
-                var errMsg = ('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
-                log.error(errMsg);
-                log.error(result);
-                return reject(errMsg);
-              }
-
-              // Get the exit code.
-              result.exitCode = data.StatusCode;
-              return resolve(result);
+              // Set timeout for the maximum uptime.
+              setTimeout(function() {
+                var errObj = new Error(util.format('%s execution has timed out after %d minutes', CIBuildContainerName, uptimeLimit / 60));
+                return reject(errObj);
+              }, uptimeLimit * 1000);
             });
 
-          }, 5000);
 
+            setTimeout(function () {
+              // Waits for a container to end.
+              container.wait(function(err, data) {
+                if (err) {
+                  log.error('Error while the container %s is finished.', CIBuildContainerName);
+                  return reject(err);
+                }
+
+                log.info('%s container is finished.', CIBuildContainerName);
+
+                log.info(result);
+
+                if (!result.log) {
+                  var errMsg = ('Output from %s container is empty with exit code %d', CIBuildContainerName, data.StatusCode);
+                  log.error(errMsg);
+                  log.error(result);
+                  return reject(errMsg);
+                }
+
+                // Get the exit code.
+                result.exitCode = data.StatusCode;
+                return resolve(result);
+              });
+
+            }, 5000);
+
+          });
         });
-      });
+      }, 5000);
     });
   };
 
