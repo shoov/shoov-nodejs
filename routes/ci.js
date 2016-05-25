@@ -210,7 +210,7 @@ var getShoovConfig = function(userName, repositoryName, branchName, accessToken)
     })
     .catch(function(err) {
       if (err.statusCode == 404) {
-        log.error('.shoov.yml not exist in repository %s/%s', userName, repositoryName);
+        log.error('.shoov.yml does not exist in repository %s/%s', userName, repositoryName);
       }
       else {
         log.error("Can't get .shoov.yml in %s/%s", userName, repositoryName, { errMessage: err.message } );
