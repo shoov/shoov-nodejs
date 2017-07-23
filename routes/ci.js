@@ -402,12 +402,13 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                         log.error('Can\'t attach to the container %s', CIBuildContainerName);
                         return reject(err);
                     }
-                    stream.pipe(process.stdout);
+
                     // Save container in containers variable.
                     containers.push(container);
 
                     log.info('%s container ID is %s', CIBuildContainerName, container.id);
 
+                    stream.pipe(process.stdout);
                     // Read a stream.
                     stream.on('data', function(chunk) {
                         // Get the data from the terminal.
@@ -418,6 +419,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                     container.start(function(err, data) {
                         if (err) {
                             log.error("Can't start the container %s, error: %s", CIBuildContainerName, err);
+                            log.error("Data is: %s", data)
                             return reject(err);
                         }
                         // Set timeout for the maximum uptime.
