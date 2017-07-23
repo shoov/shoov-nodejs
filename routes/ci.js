@@ -272,7 +272,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             log.info('Starting %s', seleniumContainerName);
 
             // Create Selenium container.
-            var options = {
+            var containerOptions = {
                 'Image': conf.get('selenium_docker_image'),
                 'Env': [
                     'SCREEN_WIDTH=1920',
@@ -282,8 +282,8 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                 ],
                 'name': seleniumContainerName
             };
-            log.info('Options: %s', options);
-            docker.createContainer(options, function(err, container) {
+            log.info('Options: %s', containerOptions);
+            docker.createContainer(containerOptions, function(err, container) {
                 if (err) {
                     log.error('Can\'t create the container %s', seleniumContainerName);
                     return reject(err);
@@ -311,6 +311,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                         if (err) {
                             var errMsg = util.format("Can't start the Selenium container %s. Error = %s", seleniumContainerName, err);
                             log.error(errMsg);
+                            log.error(data);
                             return reject(errMsg);
                         }
                         // Set timeout for the time for which the selenium server should start.
