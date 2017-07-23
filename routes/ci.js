@@ -272,7 +272,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             log.info('Starting %s', seleniumContainerName);
 
             // Create Selenium container.
-            docker.createContainer({
+            var options = {
                 'Image': conf.get('selenium_docker_image'),
                 'Env': [
                     'SCREEN_WIDTH=1920',
@@ -281,7 +281,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                     'WITH_GUACAMOLE=false'
                 ],
                 'name': seleniumContainerName
-            }, function(err, container) {
+            };
+            log.info('Options: %s', options);
+            docker.createContainer(options, function(err, container) {
                 if (err) {
                     log.error('Can\'t create the container %s', seleniumContainerName);
                     return reject(err);
@@ -303,7 +305,6 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
 
                     log.info('%s selenium container ID is %s', seleniumContainerName, container.id);
 
-                    stream.pipe(process.stdout);
 
                     // Start a new created container.
                     container.start(function(err, data) {
