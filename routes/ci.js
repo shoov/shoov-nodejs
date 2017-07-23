@@ -415,7 +415,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                         result.log += chunk;
                     });
                     // Start a new container.
-                    container.start(function(err) {
+                    container.start(function(err, data) {
                         if (err) {
                             log.error("Can't start the container %s, error: %s", CIBuildContainerName, err);
                             return reject(err);
