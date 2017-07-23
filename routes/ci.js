@@ -313,6 +313,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                             log.error(errMsg);
                             log.error(container);
                             return reject(errMsg);
+                        } else {
+                            // Read stream and wait until needed phrase.
+                            log.info('Waiting for selenium container %s.', seleniumContainerName);
                         }
                         // Set timeout for the time for which the selenium server should start.
                         setTimeout(function() {
@@ -327,8 +330,6 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                             return reject(errObj);
                         }, uptimeLimit * 1000);
                     });
-                    // Read stream and wait until needed phrase.
-                    log.info('Waiting for selenium container %s.', seleniumContainerName);
 
                     stream.on('data', function(chunk) {
                         // And waiting for "Ready" string.
