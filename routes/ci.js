@@ -287,7 +287,6 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                     return reject(err);
                 }
 
-                stream.pipe(process.stdout);
                 // Attach to container.
                 container.attach({
                     stream: true,
@@ -303,6 +302,8 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                     containers.push(container);
 
                     log.info('%s selenium container ID is %s', seleniumContainerName, container.id);
+
+                    stream.pipe(process.stdout);
 
                     // Start a new created container.
                     container.start(function(err, data) {
