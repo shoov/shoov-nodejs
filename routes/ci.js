@@ -286,12 +286,14 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                     log.error('Can\'t create the container %s', seleniumContainerName);
                     return reject(err);
                 }
+
+                stream.pipe(process.stdout);
                 // Attach to container.
                 container.attach({
-                    logs: true,
                     stream: true,
                     stdout: true,
-                    stderr: true
+                    stderr: true,
+                    tty: true
                 }, function(err, stream) {
                     if (err) {
                         log.error('Can\'t attach to the container %s', seleniumContainerName);
@@ -303,9 +305,9 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                     log.info('%s selenium container ID is %s', seleniumContainerName, container.id);
 
                     // Start a new created container.
-                    container.start(function(err) {
+                    container.start(function(err, data) {
                         if (err) {
-                            var errMsg = util.format("Can't start the container %s. Error = %s", seleniumContainerName, err);
+                            var errMsg = util.format("Can't start the Selenium container %s. Error = %s", seleniumContainerName, err);
                             log.error(errMsg);
                             return reject(errMsg);
                         }
