@@ -376,7 +376,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
             // If shoov configuration contain selenium add-on and selenium container successfully
             // started then link CI Build container with Selenium container.
             if (withSelenium && seleniumContainerName) {
-                containerOptions['Hostconfig'] = {
+                containerOptions['HostConfig'] = {
                     "Links": [seleniumContainerName + ':selenium']
                 };
 
