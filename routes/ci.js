@@ -393,15 +393,16 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                 }
                 // Attach to container.
                 container.attach({
-                    logs: true,
                     stream: true,
                     stdout: true,
-                    stderr: true
+                    stderr: true,
+                    tty: true
                 }, function(err, stream) {
                     if (err) {
                         log.error('Can\'t attach to the container %s', CIBuildContainerName);
                         return reject(err);
                     }
+                    stream.pipe(process.stdout);
                     // Save container in containers variable.
                     containers.push(container);
 
