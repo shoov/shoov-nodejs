@@ -311,7 +311,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                         if (err) {
                             var errMsg = util.format("Can't start the Selenium container %s. Error = %s", seleniumContainerName, err);
                             log.error(errMsg);
-                            log.error(data);
+                            log.error(container);
                             return reject(errMsg);
                         }
                         // Set timeout for the time for which the selenium server should start.
