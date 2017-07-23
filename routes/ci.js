@@ -279,8 +279,7 @@ var execDocker = function(buildId, buildItemId, accessToken, withSelenium) {
                     'SCREEN_HEIGHT=1080',
                     'VNC_PASSWORD=' + vncPassword,
                     'WITH_GUACAMOLE=false'
-                ],
-                'name': seleniumContainerName
+                ]
             }, function(err, container) {
                 if (err) {
                     log.error('Can\'t create the container %s', seleniumContainerName);
